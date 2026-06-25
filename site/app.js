@@ -39,7 +39,7 @@ const synonyms = {
 };
 
 const state = {
-  selectedMaterialId: materials[0].id,
+  selectedMaterialId: null,
   currentStep: 0,
   currentView: "guide",
   currentIssue: 0,
@@ -557,6 +557,24 @@ function stepScreenshots(step) {
 
 function renderLesson() {
   const material = selectedMaterial();
+  if (!material) {
+    nodes.lessonTopic.textContent = "";
+    nodes.lessonTitle.textContent = "Материалы пока не опубликованы";
+    nodes.lessonDescription.textContent = "Создайте урок в конструкторе и опубликуйте его в учебную базу.";
+    nodes.lessonMeta.innerHTML = "";
+    nodes.keywordRow.innerHTML = "";
+    nodes.processStrip.innerHTML = "";
+    nodes.stepKicker.textContent = "";
+    nodes.stepTitle.textContent = "";
+    nodes.stepWhy.innerHTML = "";
+    nodes.stepAction.innerHTML = "";
+    nodes.stepResult.innerHTML = "";
+    if (nodes.stepSlides) nodes.stepSlides.innerHTML = "";
+    nodes.checklist.innerHTML = "";
+    nodes.mistakeGrid.innerHTML = "";
+    nodes.mistakeDetail.textContent = "";
+    return;
+  }
   const step = material.steps[state.currentStep] || material.steps[0];
 
   nodes.lessonTopic.textContent = material.topic;
@@ -908,6 +926,8 @@ async function bootstrap() {
   const lessonId = params.get("lesson");
   if (lessonId && materials.some((material) => material.id === lessonId)) {
     state.selectedMaterialId = lessonId;
+  } else if (!state.selectedMaterialId && materials[0]) {
+    state.selectedMaterialId = materials[0].id;
   }
   nodes.guideView?.classList.add("is-extended");
   renderShell();
