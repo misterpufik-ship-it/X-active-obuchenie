@@ -810,10 +810,33 @@ button {
 }
 
 .step-panel {
+  display: block;
+}
+
+.step-slides {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.step-slide-row {
   display: grid;
-  grid-template-columns: 0.9fr 1.35fr;
-  gap: 20px;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 18px;
   align-items: start;
+}
+
+.step-slide-side {
+  min-width: 0;
+}
+
+.step-why-companion-body {
+  margin: 6px 0 0;
+  color: #344054;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .instruction-grid {
@@ -1004,25 +1027,21 @@ button {
   text-align: center;
 }
 
-#guide-view.is-extended .step-panel {
+#guide-view.is-extended .step-slide-row {
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
 #guide-view.is-extended .step-copy {
-  grid-column: 1;
-  grid-row: 1;
-  position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 150px);
-  overflow-y: auto;
-  padding-right: 6px;
+  position: static;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 #guide-view.is-extended .screenshot-gallery {
-  grid-column: 2;
-  grid-row: 1;
+  min-width: 0;
 }
 
 #guide-view.is-extended .screenshot-frame {
@@ -1193,20 +1212,12 @@ button {
     grid-template-columns: 1fr;
   }
 
-  #guide-view.is-extended .step-panel {
+  #guide-view.is-extended .step-slide-row {
     grid-template-columns: 1fr;
   }
 
-  #guide-view.is-extended .screenshot-gallery,
-  #guide-view.is-extended .step-copy {
-    grid-column: auto;
-    grid-row: auto;
-  }
-
-  #guide-view.is-extended .step-copy {
-    position: static;
-    max-height: none;
-    overflow: visible;
+  .step-slide-row {
+    grid-template-columns: 1fr;
   }
 
   .topbar {

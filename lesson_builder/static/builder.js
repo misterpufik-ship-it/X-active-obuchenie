@@ -657,16 +657,51 @@ function renderProjectList() {
   nodes.projectList.innerHTML = state.projects
     .map((project) => {
       const active = state.project?.id === project.id ? " is-active" : "";
-      return `<button class="project-item${active}" type="button" data-id="${project.id}">
-        <strong>${escapeHtml(project.title)}</strong>
-        <small>${escapeHtml(project.topic)} · ${project.stepsCount} шагов · ${project.status}</small>
-      </button>`;
+      return `<div class="project-item-wrap${active ? " is-active" : ""}">
+        <button class="project-item${active}" type="button" data-id="${project.id}">
+          <strong>${escapeHtml(project.title)}</strong>
+          <small>${escapeHtml(project.topic)} · ${project.stepsCount} шагов · ${project.status}</small>
+        </button>
+        <button class="project-delete-btn" type="button" data-id="${project.id}" title="Удалить проект" aria-label="Удалить проект">×</button>
+      </div>`;
     })
     .join("");
 
   nodes.projectList.querySelectorAll(".project-item").forEach((button) => {
     button.addEventListener("click", () => openProject(button.dataset.id));
   });
+
+  nodes.projectList.querySelectorAll(".project-delete-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      deleteProject(button.dataset.id);
+    });
+  });
+}
+
+async function deleteProject(projectId) {
+  const project = state.projects.find((item) => item.id === projectId);
+  const title = project?.title || projectId;
+  const publishedNote = project?.status === "published" ? "\n\nУрок также будет убран из учебной базы на сайте." : "";
+  if (!confirm(`Удалить проект «${title}»?${publishedNote}\n\nФайлы проекта будут удалены с сервера.`)) {
+    return;
+  }
+
+  try {
+    await flushPendingSave();
+    await api(`/api/projects/${projectId}`, { method: "DELETE" });
+    if (state.project?.id === projectId) {
+      state.project = null;
+      state.selectedStepId = null;
+      state.selectedFrameId = null;
+      nodes.editor.classList.add("hidden");
+      nodes.emptyState.classList.remove("hidden");
+    }
+    await loadProjects();
+    nodes.statusMessage.textContent = `Проект «${title}» удалён.`;
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 async function openProject(projectId) {

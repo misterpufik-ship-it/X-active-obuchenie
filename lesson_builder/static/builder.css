@@ -219,7 +219,37 @@ button {
   overflow: auto;
 }
 
+.project-item-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.project-item-wrap.is-active .project-item {
+  background: rgba(33, 162, 179, 0.22);
+  border-color: rgba(127, 211, 223, 0.55);
+}
+
+.project-delete-btn {
+  width: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.project-delete-btn:hover {
+  background: rgba(229, 57, 53, 0.35);
+  border-color: rgba(255, 138, 128, 0.7);
+  color: #fff;
+}
+
 .project-item {
+  width: 100%;
   text-align: left;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);

@@ -603,7 +603,9 @@ const nodes = {
   stepWhy: document.querySelector("#step-why"),
   stepAction: document.querySelector("#step-action"),
   stepResult: document.querySelector("#step-result"),
-  stepImages: document.querySelector("#step-images"),
+  stepPanel: document.querySelector("#step-panel"),
+  stepCopy: document.querySelector("#step-copy"),
+  stepSlides: document.querySelector("#step-slides"),
   stepComplete: document.querySelector("#step-complete"),
   lightbox: document.querySelector("#image-lightbox"),
   lightboxImage: document.querySelector("#lightbox-image"),
@@ -865,15 +867,124 @@ function renderScreenshotMarkers(annotations, width, height, pulseLabel = "") {
 
 let pulseTimer = null;
 
-function alignSlideWithCopy(frame) {
-  const copy = document.querySelector(".step-copy");
-  if (!frame || !copy) return;
-  const copyTop = copy.getBoundingClientRect().top;
-  const frameTop = frame.getBoundingClientRect().top;
-  const delta = frameTop - copyTop;
-  if (Math.abs(delta) > 4) {
-    window.scrollBy({ top: delta, behavior: "smooth" });
+function renderScreenshotFigureHtml(item, index, total, step) {
+  const caption = item.caption
+    ? `<figcaption>${item.caption}${total > 1 ? ` · скрин ${index + 1}` : ""}</figcaption>`
+    : total > 1
+      ? `<figcaption>Скриншот ${index + 1}</figcaption>`
+      : "";
+  return `<figure class="screenshot-frame">
+    <button class="screenshot-zoom" type="button" aria-label="Открыть скриншот крупно" data-image-index="${index}">
+      <span class="screenshot-media">
+        <img src="${item.image}" alt="Скриншот: ${step.title}${total > 1 ? ` (${index + 1})` : ""}" data-shot-index="${index}" />
+        ${
+          item.annotations?.length
+            ? `<div class="screenshot-overlay">${renderScreenshotMarkers(item.annotations, item.width, item.height)}</div>`
+            : ""
+        }
+      </span>
+    </button>
+    ${caption}
+  </figure>`;
+}
+
+function renderWhyCompanionHtml(whyHtml) {
+  return `<div class="step-slide-side">
+    <div class="instruction-grid">
+      <div class="step-why-companion">
+        <span class="mini-label">Зачем</span>
+        <div class="step-why-companion-body">${whyHtml}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function layoutStepSlides(screenshots, step, labels) {
+  const panel = nodes.stepPanel;
+  const slides = nodes.stepSlides;
+  const copy = nodes.stepCopy;
+  if (!panel || !slides || !copy) return;
+
+  panel.classList.toggle("has-slide-rows", screenshots.length > 1);
+  slides.innerHTML = "";
+
+  const whyHtml = renderRichText(step.why || "");
+
+  if (!screenshots.length) {
+    const row = document.createElement("div");
+    row.className = "step-slide-row";
+    row.appendChild(copy);
+    const gallery = document.createElement("div");
+    gallery.className = "screenshot-gallery";
+    gallery.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
+    row.appendChild(gallery);
+    slides.appendChild(row);
+    return;
   }
+
+  screenshots.forEach((item, index) => {
+    const row = document.createElement("div");
+    row.className = "step-slide-row";
+    row.dataset.shotIndex = String(index);
+
+    if (index === 0) {
+      row.appendChild(copy);
+    } else {
+      const side = document.createElement("div");
+      side.innerHTML = renderWhyCompanionHtml(whyHtml);
+      row.appendChild(side.firstElementChild);
+    }
+
+    const gallery = document.createElement("div");
+    gallery.className = "screenshot-gallery";
+    gallery.innerHTML = renderScreenshotFigureHtml(item, index, screenshots.length, step);
+    row.appendChild(gallery);
+    slides.appendChild(row);
+  });
+}
+
+function scrollToSlideRow(row) {
+  if (!row) return;
+  const anchor = row.querySelector(".step-copy, .step-slide-side, .step-why-companion");
+  const targetTop = (anchor || row).getBoundingClientRect().top + window.scrollY;
+  const offset = 88;
+  window.scrollTo({ top: Math.max(0, targetTop - offset), behavior: "smooth" });
+}
+
+function bindScreenshotHandlers(screenshots, labels) {
+  nodes.stepSlides?.querySelectorAll(".screenshot-zoom").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      if (event.target.closest(".screenshot-marker, .action-ref-btn")) return;
+      const item = screenshots[Number(button.dataset.imageIndex)];
+      if (!item) return;
+      nodes.lightboxImage.src = item.image;
+      nodes.lightboxImage.alt = button.querySelector("img")?.alt || "";
+      nodes.lightboxCaption.textContent = item.caption || "";
+      nodes.lightbox.hidden = false;
+    });
+  });
+
+  nodes.stepSlides?.querySelectorAll("img[data-shot-index]").forEach((img) => {
+    img.addEventListener("load", () => {
+      const shot = screenshots[Number(img.dataset.shotIndex)];
+      if (!shot?.annotations?.length || shot.width) return;
+      shot.width = img.naturalWidth;
+      shot.height = img.naturalHeight;
+      const overlay = img.parentElement?.querySelector(".screenshot-overlay");
+      if (overlay) {
+        overlay.innerHTML = renderScreenshotMarkers(shot.annotations, shot.width, shot.height);
+        overlay.querySelectorAll(".screenshot-marker").forEach((marker) => {
+          marker.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            pulseScreenshotLabel(marker.dataset.label);
+          });
+        });
+      }
+    });
+  });
+
+  bindInteractiveLessonHandlers(screenshots, labels);
 }
 
 function pulseScreenshotLabel(label) {
@@ -885,9 +996,9 @@ function pulseScreenshotLabel(label) {
     node.classList.toggle("is-pulsing", node.dataset.label === String(label));
   });
   const target = document.querySelector(`.screenshot-marker[data-label="${CSS.escape(String(label))}"]`);
-  const frame = target?.closest(".screenshot-frame");
-  if (frame && nodes.guideView?.classList.contains("is-extended")) {
-    alignSlideWithCopy(frame);
+  const row = target?.closest(".step-slide-row");
+  if (row) {
+    scrollToSlideRow(row);
   } else {
     target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -1004,63 +1115,8 @@ function renderLesson() {
     nodes.stepAction.innerHTML = renderRichText(step.action);
   }
   nodes.stepResult.innerHTML = renderRichText(step.result);
-  if (!screenshots.length) {
-    nodes.stepImages.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
-  } else {
-    nodes.stepImages.innerHTML = screenshots
-      .map((item, index) => {
-        const caption = item.caption
-          ? `<figcaption>${item.caption}${screenshots.length > 1 ? ` · скрин ${index + 1}` : ""}</figcaption>`
-          : screenshots.length > 1
-            ? `<figcaption>Скриншот ${index + 1}</figcaption>`
-            : "";
-        return `<figure class="screenshot-frame">
-          <button class="screenshot-zoom" type="button" aria-label="Открыть скриншот крупно" data-image-index="${index}">
-            <span class="screenshot-media">
-              <img src="${item.image}" alt="Скриншот: ${step.title}${screenshots.length > 1 ? ` (${index + 1})` : ""}" data-shot-index="${index}" />
-              ${
-                item.annotations?.length
-                  ? `<div class="screenshot-overlay">${renderScreenshotMarkers(item.annotations, item.width, item.height)}</div>`
-                  : ""
-              }
-            </span>
-          </button>
-          ${caption}
-        </figure>`;
-      })
-      .join("");
-    nodes.stepImages.querySelectorAll(".screenshot-zoom").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        if (event.target.closest(".screenshot-marker, .action-ref-btn")) return;
-        const item = screenshots[Number(button.dataset.imageIndex)];
-        if (!item) return;
-        nodes.lightboxImage.src = item.image;
-        nodes.lightboxImage.alt = button.querySelector("img")?.alt || "";
-        nodes.lightboxCaption.textContent = item.caption || "";
-        nodes.lightbox.hidden = false;
-      });
-    });
-    nodes.stepImages.querySelectorAll("img[data-shot-index]").forEach((img) => {
-      img.addEventListener("load", () => {
-        const shot = screenshots[Number(img.dataset.shotIndex)];
-        if (!shot?.annotations?.length || shot.width) return;
-        shot.width = img.naturalWidth;
-        shot.height = img.naturalHeight;
-        const overlay = img.parentElement?.querySelector(".screenshot-overlay");
-        if (overlay) {
-          overlay.innerHTML = renderScreenshotMarkers(shot.annotations, shot.width, shot.height);
-          overlay.querySelectorAll(".screenshot-marker").forEach((marker) => {
-            marker.addEventListener("click", (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              pulseScreenshotLabel(marker.dataset.label);
-            });
-          });
-        }
-      });
-    });
-    bindInteractiveLessonHandlers(screenshots, labels);
-  }
+  layoutStepSlides(screenshots, step, labels);
+  bindScreenshotHandlers(screenshots, labels);
   nodes.stepComplete.checked = completedSet(material.id).has(state.currentStep);
 
   nodes.checklist.innerHTML = material.checklist

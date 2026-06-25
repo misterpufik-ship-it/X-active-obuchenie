@@ -185,6 +185,16 @@ def api_unpublish_project(project_id: str):
 
 @app.delete("/api/projects/<project_id>")
 def api_delete_project(project_id: str):
+    try:
+        data = storage.load_project(project_id)
+        if data.get("status") == "published" or data.get("publishedId"):
+            try:
+                publish.unpublish_from_site(project_id)
+            except Exception:  # noqa: BLE001
+                pass
+    except FileNotFoundError:
+        pass
+
     folder = storage.project_dir(project_id)
     if folder.is_dir():
         import shutil
