@@ -436,6 +436,8 @@ button {
 
 .lesson-card {
   padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .section-title {
@@ -615,7 +617,7 @@ button {
 }
 
 .tag-panel {
-  margin-top: 20px;
+  margin-top: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fbfdff;
@@ -651,15 +653,17 @@ button {
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
+  margin-top: 16px;
 }
 
 .view-tab {
-  min-height: 46px;
+  min-height: 40px;
   border: 0;
   border-right: 1px solid var(--line);
   background: #f8fbfd;
   color: #4d5c6c;
   font-weight: 800;
+  font-size: 13px;
 }
 
 .view-tab:last-child {
@@ -673,7 +677,7 @@ button {
 
 .lesson-view {
   display: none;
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .lesson-view.is-active {
