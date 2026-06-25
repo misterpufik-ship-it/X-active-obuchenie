@@ -83,15 +83,31 @@ let annotationDockNext = null;
 
 function initCanvasEditor() {
   if (canvasEditor) return canvasEditor;
-  canvasEditor = createCanvasEditor(nodes.canvas, nodes.colorPalette, (annotations) => {
-    const step = selectedStep();
-    if (!step) return;
-    step.annotations = annotations;
-    updatePaletteVisibility();
-    scheduleSaveStep();
-  });
+  canvasEditor = createCanvasEditor(
+    nodes.canvas,
+    nodes.colorPalette,
+    (annotations) => {
+      const step = selectedStep();
+      if (!step) return;
+      step.annotations = annotations;
+      scheduleSaveStep();
+    },
+    {
+      onSelectionChange: () => updatePaletteVisibility(),
+      onRequestSelectTool: () => activateTool("select"),
+    }
+  );
   canvasEditor.setColor(state.activeColor);
   return canvasEditor;
+}
+
+function activateTool(tool) {
+  document.querySelectorAll(".tool-btn").forEach((item) => {
+    item.classList.toggle("is-active", item.dataset.tool === tool);
+  });
+  initCanvasEditor().setTool(tool);
+  nodes.canvas.classList.toggle("tool-select", tool === "select");
+  updatePaletteVisibility();
 }
 
 function updatePaletteVisibility() {
@@ -403,14 +419,7 @@ async function saveStepFields() {
 }
 
 document.querySelectorAll(".tool-btn").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".tool-btn").forEach((item) => item.classList.remove("is-active"));
-    button.classList.add("is-active");
-    const tool = button.dataset.tool;
-    initCanvasEditor().setTool(tool);
-    nodes.canvas.classList.toggle("tool-select", tool === "select");
-    updatePaletteVisibility();
-  });
+  button.addEventListener("click", () => activateTool(button.dataset.tool));
 });
 
 document.querySelector("#undo-annotation").addEventListener("click", () => {
@@ -423,8 +432,11 @@ document.querySelector("#clear-annotations").addEventListener("click", () => {
 });
 
 document.querySelector("#delete-annotation").addEventListener("click", () => {
-  initCanvasEditor().deleteSelected();
+  const removed = initCanvasEditor().deleteSelected();
   updatePaletteVisibility();
+  if (!removed) {
+    nodes.statusMessage.textContent = "Выберите элемент на скрине (инструмент «Выбор») или кликните по нему.";
+  }
 });
 
 [nodes.projectTitle, nodes.fieldTopic, nodes.fieldRole, nodes.fieldDuration, nodes.fieldDescription, nodes.fieldVideoNote, nodes.fieldKeywords, nodes.fieldChecklist, nodes.fieldIssues].forEach((node) => {
@@ -698,10 +710,6 @@ nodes.sidebarToggle.addEventListener("click", () => setSidebarCollapsed(true));
 nodes.sidebarRestore.addEventListener("click", () => setSidebarCollapsed(false));
 nodes.canvasExpand.addEventListener("click", (event) => {
   event.stopPropagation();
-  openCanvasLightbox();
-});
-nodes.canvas.addEventListener("dblclick", (event) => {
-  event.preventDefault();
   openCanvasLightbox();
 });
 nodes.canvasLightboxClose.addEventListener("click", closeCanvasLightbox);

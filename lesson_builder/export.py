@@ -88,10 +88,12 @@ def render_annotated_image(project_id: str, step: dict[str, Any]) -> Path:
             ty = item.get("ty", 0)
             ax = item.get("ax", tx)
             ay = item.get("ay", ty)
-            draw.line((tx, ty + 12, ax, ay), fill=color, width=stroke)
-            draw.ellipse((ax - 6, ay - 6, ax + 6, ay + 6), fill=color)
             bbox = draw.textbbox((tx, ty), text, font=font)
             pad = 8
+            line_x = tx - pad + (bbox[2] - bbox[0] + pad * 2) / 2
+            line_y = ty - pad + (bbox[3] - bbox[1] + pad * 2)
+            draw.line((line_x, line_y, ax, ay), fill=color, width=stroke)
+            draw.ellipse((ax - 6, ay - 6, ax + 6, ay + 6), fill=color)
             draw.rounded_rectangle(
                 (bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad),
                 radius=6,
