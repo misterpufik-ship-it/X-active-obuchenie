@@ -369,16 +369,13 @@ function renderActionView() {
     rendered = rendered.replace(/>([^<]+)</g, (chunk, inner) => {
       const replaced = inner.replace(/(\d+)/g, (full, num) =>
         labels.has(num)
-          ? `<button type="button" class="action-ref-btn" data-label="${escapeHtml(num)}">${escapeHtml(num)}</button>`
+          ? `<span class="action-ref-chip">${escapeHtml(num)}</span>`
           : full
       );
       return `>${replaced}<`;
     });
   }
   nodes.stepActionView.innerHTML = rendered;
-  nodes.stepActionView.querySelectorAll(".action-ref-btn").forEach((button) => {
-    button.addEventListener("click", () => pulseAnnotation(button.dataset.label));
-  });
 }
 
 function setActionFieldEditing(editing) {
@@ -895,9 +892,23 @@ nodes.stepAction.addEventListener("input", () => {
 nodes.stepAction.addEventListener("focus", () => setActionFieldEditing(true));
 nodes.stepAction.addEventListener("blur", () => setActionFieldEditing(false));
 
-nodes.stepActionView?.addEventListener("click", () => {
+function focusActionEditor() {
   setActionFieldEditing(true);
-  nodes.stepAction.focus();
+  requestAnimationFrame(() => {
+    nodes.stepAction.focus();
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(nodes.stepAction);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+}
+
+nodes.stepActionView?.addEventListener("mousedown", (event) => {
+  event.preventDefault();
+  focusActionEditor();
 });
 
 document.querySelector("#save-project").addEventListener("click", async () => {

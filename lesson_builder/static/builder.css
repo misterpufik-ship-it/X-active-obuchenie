@@ -823,10 +823,29 @@ dialog menu {
   line-height: 1.55;
   white-space: pre-wrap;
   cursor: text;
+  user-select: none;
 }
 
 .action-field.is-editing .action-field-view {
   display: none;
+}
+
+.action-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 2px solid #e53935;
+  border-radius: 999px;
+  background: #fff5f5;
+  color: #c62828;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+  vertical-align: middle;
+  pointer-events: none;
 }
 
 .action-view-placeholder {
