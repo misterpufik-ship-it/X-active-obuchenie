@@ -43,7 +43,7 @@
         <span aria-hidden="true">›</span>
       </button>
 
-      <main class="workspace" id="workspace">
+      <main class="workspace" id="workspace" tabindex="0">
         <section class="empty-state" id="empty-state">
           <h2>Выберите или создайте проект</h2>
           <p>Выберите проект слева или создайте новый. Проекты сохраняются на сервере конструктора.</p>
@@ -123,10 +123,10 @@
                 <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
                 <button class="secondary-btn" id="upload-image" type="button">+ Скриншот</button>
                 <button class="ghost-btn" id="delete-step-frame" type="button">Удалить скрин</button>
-                <span class="screenshot-hint">или <kbd>Ctrl</kbd>+<kbd>V</kbd> — вставка из Ножниц / буфера</span>
+                <span class="screenshot-hint">кликните по области скрина, затем <kbd>Ctrl</kbd>+<kbd>V</kbd></span>
               </div>
 
-              <div class="step-frames-strip" id="step-frames-strip" aria-label="Скриншоты шага"></div>
+              <div class="step-frames-strip" id="step-frames-strip" aria-label="Скриншоты шага" tabindex="0"></div>
 
               <div id="annotation-dock">
                 <div class="panel-head annotation-head">
@@ -153,7 +153,7 @@
                   <div class="color-palette" id="color-palette"></div>
                 </div>
 
-                <div class="canvas-wrap" id="canvas-wrap" title="Двойной клик — открыть в большом размере">
+                <div class="canvas-wrap" id="canvas-wrap" title="Двойной клик — открыть в большом размере" tabindex="0">
                   <canvas id="annotation-canvas"></canvas>
                   <button class="canvas-expand-btn" id="canvas-expand" type="button">Увеличить</button>
                 </div>

@@ -91,13 +91,19 @@ def _try_git_sync(material_id: str, paths_to_add: list[str]) -> str | None:
     return None
 
 
+SITE_SHELL_FILES = ["app.js", "index.html", "styles.css", "published-lessons.json"]
+
+
 def auto_deploy(material_id: str, deploy_files: list[str] | None = None) -> dict[str, Any]:
     url = f"https://nostradamus-1503.ru/obuchenie/?lesson={material_id}"
 
     if not SITE_DIR.is_dir():
         return {"deployed": False, "message": "Папка site/ не найдена.", "url": url}
 
-    rel_paths = deploy_files or ["published-lessons.json"]
+    rel_paths = list(deploy_files or ["published-lessons.json"])
+    for shell_file in SITE_SHELL_FILES:
+        if shell_file not in rel_paths:
+            rel_paths.append(shell_file)
     abs_files = [(SITE_DIR / rel).resolve() for rel in rel_paths]
     abs_files = [path for path in abs_files if path.is_file() and str(path).startswith(str(SITE_DIR.resolve()))]
 

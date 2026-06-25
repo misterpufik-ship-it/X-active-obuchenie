@@ -313,7 +313,7 @@ function renderEditor() {
 
   renderStepsList();
   renderFrameSelect();
-  renderStepEditor();
+  void renderStepEditor();
 }
 
 function renderStepsList() {
@@ -407,7 +407,7 @@ async function renderStepEditor() {
     return;
   }
 
-  nodes.stepEditorTitle.textContent = `Шаг ${step.number}`;
+  nodes.stepEditorTitle.textContent = `Шаг ${step.number} · скриншотов: ${normalizeStepFrames(step).length}`;
   nodes.stepTitle.value = step.title || "";
   nodes.stepWhy.value = step.why || "";
   nodes.stepAction.value = step.action || "";
@@ -485,6 +485,7 @@ function syncStepFromForm() {
 
 async function flushPendingSave() {
   clearTimeout(saveTimer);
+  saveTimer = null;
   if (!state.project) return;
   syncStepFromForm();
   const payload = collectProjectPayload();
@@ -494,6 +495,11 @@ async function flushPendingSave() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+function cancelPendingSave() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
 }
 
 async function saveProjectMeta() {
@@ -700,6 +706,8 @@ document.querySelector("#apply-frame").addEventListener("click", async () => {
     alert("Нет доступных кадров.");
     return;
   }
+  cancelPendingSave();
+  syncStepFromForm();
   addStepFrame(step, frameFile);
   await saveStepFields();
   await renderStepEditor();
@@ -723,13 +731,22 @@ document.querySelector("#delete-step-frame").addEventListener("click", async () 
 
 async function uploadStepImage(file, { applyToStep = true, label = "вручную" } = {}) {
   if (!state.project || !file) return;
+  const step = selectedStep();
+  if (applyToStep && !step) {
+    throw new Error("Сначала выберите шаг слева.");
+  }
+
+  cancelPendingSave();
+  if (step) {
+    syncStepFromForm();
+  }
+
   const form = new FormData();
   const name = file.name || `screenshot-${Date.now()}.png`;
   form.append("image", file, name);
   form.append("label", label);
-  if (applyToStep) {
-    const step = selectedStep();
-    if (step) form.append("applyToStep", step.id);
+  if (applyToStep && step) {
+    form.append("applyToStep", step.id);
   }
   const response = await fetch(appUrl(`/api/projects/${state.project.id}/upload-image`), {
     method: "POST",
@@ -740,16 +757,15 @@ async function uploadStepImage(file, { applyToStep = true, label = "вручну
     throw new Error(payload.error || "Не удалось загрузить изображение.");
   }
   state.project = await response.json();
-  const step = selectedStep();
-  if (applyToStep && step) {
-    normalizeStepFrames(step);
-    const newest = step.frames[step.frames.length - 1];
+  const freshStep = selectedStep();
+  if (applyToStep && freshStep) {
+    normalizeStepFrames(freshStep);
+    const newest = freshStep.frames[freshStep.frames.length - 1];
     if (newest) state.selectedFrameId = newest.id;
   }
   renderEditor();
-  if (applyToStep && step) {
-    await renderStepEditor();
-  }
+  await renderStepEditor();
+  nodes.statusMessage.textContent = state.project.statusMessage || "Скриншот добавлен.";
 }
 
 document.querySelector("#upload-image").addEventListener("click", () => {
@@ -762,14 +778,17 @@ document.querySelector("#image-input").addEventListener("change", async (event) 
   if (!file || !state.project) return;
   try {
     nodes.statusMessage.textContent = "Загрузка изображения…";
-    await uploadStepImage(file, { applyToStep: Boolean(selectedStep()), label: "файл" });
+    await uploadStepImage(file, { applyToStep: true, label: "файл" });
     nodes.statusMessage.textContent = state.project.statusMessage || "Изображение загружено.";
   } catch (error) {
     alert(error.message);
   }
 });
 
-document.addEventListener("paste", async (event) => {
+document.addEventListener("paste", handlePaste, true);
+window.addEventListener("paste", handlePaste, true);
+
+async function handlePaste(event) {
   if (!state.project || nodes.editor.classList.contains("hidden")) return;
   const active = document.activeElement;
   if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) {
@@ -784,13 +803,19 @@ document.addEventListener("paste", async (event) => {
     event.preventDefault();
     try {
       nodes.statusMessage.textContent = "Вставка из буфера…";
-      await uploadStepImage(file, { applyToStep: Boolean(selectedStep()), label: "буфер" });
-      nodes.statusMessage.textContent = state.project.statusMessage || "Скриншот вставлен из буфера.";
+      await uploadStepImage(file, { applyToStep: true, label: "буфер" });
     } catch (error) {
       alert(error.message);
     }
     break;
   }
+}
+
+nodes.canvasWrap?.addEventListener("click", () => nodes.canvasWrap.focus());
+nodes.stepFramesStrip?.addEventListener("click", () => nodes.stepFramesStrip.focus());
+document.querySelector("#workspace")?.addEventListener("click", (event) => {
+  if (event.target.closest("input, textarea, select, button, a, label")) return;
+  document.querySelector("#workspace")?.focus();
 });
 
 async function downloadExport(path, filename) {

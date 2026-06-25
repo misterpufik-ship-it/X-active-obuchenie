@@ -461,6 +461,7 @@ button {
   flex-wrap: wrap;
   margin-bottom: 12px;
   min-height: 0;
+  outline: none;
 }
 
 .step-frames-strip.is-empty {
@@ -507,6 +508,11 @@ button {
   padding: 10px;
   overflow: auto;
   min-height: 120px;
+  outline: none;
+}
+
+.canvas-wrap:focus {
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.35);
 }
 
 .canvas-expand-btn {
