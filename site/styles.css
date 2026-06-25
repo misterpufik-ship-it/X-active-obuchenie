@@ -512,20 +512,45 @@ button {
 
 .lesson-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 18px;
   align-items: start;
 }
 
 .lesson-header-side {
-  display: grid;
-  gap: 10px;
+  display: block;
+}
+
+.lesson-header-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 10px;
+}
+
+.lesson-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.lesson-meta span {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--soft);
+  color: #344054;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .lesson-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
 }
 
 .lesson-actions .secondary-btn,
@@ -587,20 +612,6 @@ button {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
-}
-
-.lesson-meta {
-  display: grid;
-  gap: 8px;
-}
-
-.lesson-meta span {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--soft);
-  color: #344054;
-  font-size: 14px;
 }
 
 .tag-panel {
@@ -677,31 +688,37 @@ button {
 }
 
 .process-step {
-  flex: 0 0 230px;
-  min-height: 104px;
+  flex: 0 0 auto;
+  max-width: 220px;
+  min-height: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px 10px;
   background: #fff;
   text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .process-step span {
+  flex: 0 0 auto;
   display: inline-grid;
-  width: 34px;
-  height: 28px;
+  width: 28px;
+  height: 24px;
   place-items: center;
-  border-radius: 7px;
+  border-radius: 6px;
   background: #e8f1f8;
   color: var(--blue-dark);
   font-weight: 900;
+  font-size: 12px;
 }
 
 .process-step strong {
-  display: block;
-  margin-top: 10px;
+  display: inline;
+  margin-top: 0;
   line-height: 1.25;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .process-step.is-active,
@@ -711,7 +728,7 @@ button {
 }
 
 .step-toolbar {
-  margin: 18px 0;
+  margin: 12px 0;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   gap: 12px;

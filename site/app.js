@@ -595,7 +595,6 @@ const nodes = {
     video: document.querySelector("#video-view")
   },
   guideView: document.querySelector("#guide-view"),
-  displayModeButtons: document.querySelectorAll(".display-mode-btn"),
   processStrip: document.querySelector("#process-strip"),
   prevStep: document.querySelector("#prev-step"),
   nextStep: document.querySelector("#next-step"),
@@ -866,6 +865,17 @@ function renderScreenshotMarkers(annotations, width, height, pulseLabel = "") {
 
 let pulseTimer = null;
 
+function alignSlideWithCopy(frame) {
+  const copy = document.querySelector(".step-copy");
+  if (!frame || !copy) return;
+  const copyTop = copy.getBoundingClientRect().top;
+  const frameTop = frame.getBoundingClientRect().top;
+  const delta = frameTop - copyTop;
+  if (Math.abs(delta) > 4) {
+    window.scrollBy({ top: delta, behavior: "smooth" });
+  }
+}
+
 function pulseScreenshotLabel(label) {
   if (pulseTimer) {
     clearTimeout(pulseTimer);
@@ -875,7 +885,12 @@ function pulseScreenshotLabel(label) {
     node.classList.toggle("is-pulsing", node.dataset.label === String(label));
   });
   const target = document.querySelector(`.screenshot-marker[data-label="${CSS.escape(String(label))}"]`);
-  target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const frame = target?.closest(".screenshot-frame");
+  if (frame && nodes.guideView?.classList.contains("is-extended")) {
+    alignSlideWithCopy(frame);
+  } else {
+    target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
   pulseTimer = window.setTimeout(() => {
     document.querySelectorAll(".is-pulsing").forEach((node) => node.classList.remove("is-pulsing"));
     pulseTimer = null;
@@ -1258,20 +1273,6 @@ nodes.modeButtons.forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
 
-function setDisplayMode(mode) {
-  const nextMode = mode === "extended" ? "extended" : "standard";
-  state.displayMode = nextMode;
-  localStorage.setItem("lessonDisplayMode", nextMode);
-  nodes.guideView?.classList.toggle("is-extended", nextMode === "extended");
-  nodes.displayModeButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.display === nextMode);
-  });
-}
-
-nodes.displayModeButtons.forEach((button) => {
-  button.addEventListener("click", () => setDisplayMode(button.dataset.display));
-});
-
 function setView(view) {
   state.currentView = view;
   nodes.viewTabs.forEach((tab) => {
@@ -1373,8 +1374,7 @@ async function bootstrap() {
   if (lessonId && materials.some((material) => material.id === lessonId)) {
     state.selectedMaterialId = lessonId;
   }
-  const savedDisplay = localStorage.getItem("lessonDisplayMode");
-  setDisplayMode(savedDisplay === "standard" ? "standard" : "extended");
+  nodes.guideView?.classList.add("is-extended");
   renderShell();
   renderLesson();
   setView("guide");

@@ -83,12 +83,14 @@
                 <p class="editable-field" id="lesson-description" tabindex="0"></p>
               </div>
               <div class="lesson-header-side">
-                <div class="lesson-actions" id="lesson-actions">
-                  <button class="secondary-btn hidden" id="edit-lesson" type="button">Редактировать</button>
-                  <button class="primary-btn hidden" id="save-lesson" type="button">Сохранить</button>
-                  <button class="ghost-btn hidden" id="open-builder" type="button">Конструктор</button>
+                <div class="lesson-header-toolbar">
+                  <div class="lesson-meta" id="lesson-meta"></div>
+                  <div class="lesson-actions" id="lesson-actions">
+                    <button class="secondary-btn hidden" id="edit-lesson" type="button">Редактировать</button>
+                    <button class="primary-btn hidden" id="save-lesson" type="button">Сохранить</button>
+                    <button class="ghost-btn hidden" id="open-builder" type="button">Конструктор</button>
+                  </div>
                 </div>
-                <div class="lesson-meta" id="lesson-meta"></div>
               </div>
             </header>
 
@@ -101,13 +103,6 @@
 
             <section class="lesson-view is-active is-extended" id="guide-view">
               <div class="process-strip" id="process-strip"></div>
-              <div class="step-display-bar">
-                <span class="mini-label">Отображение</span>
-                <div class="display-mode-switch" role="group" aria-label="Режим отображения шага">
-                  <button class="display-mode-btn" type="button" data-display="standard">Стандартное</button>
-                  <button class="display-mode-btn is-active" type="button" data-display="extended">Расширенное</button>
-                </div>
-              </div>
               <div class="step-toolbar">
                 <button class="icon-button" type="button" id="prev-step" aria-label="Предыдущий шаг" title="Предыдущий шаг">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
