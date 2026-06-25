@@ -11,15 +11,29 @@ from PIL import Image, ImageDraw, ImageFont
 
 from . import storage
 
+_PACKAGE_ROOT = Path(__file__).resolve().parent
 
-def _font(size: int = 22, bold: bool = False):
-    candidates = [
-        r"C:\Windows\Fonts\arialbd.ttf" if bold else r"C:\Windows\Fonts\arial.ttf",
-        r"C:\Windows\Fonts\segoeuib.ttf" if bold else r"C:\Windows\Fonts\segoeui.ttf",
+
+def _font(size: int = 22, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    regular_names = ("DejaVuSans.ttf", "LiberationSans-Regular.ttf", "arial.ttf", "segoeui.ttf")
+    bold_names = ("DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", "arialbd.ttf", "segoeuib.ttf")
+    file_names = bold_names if bold else regular_names
+
+    search_dirs = [
+        _PACKAGE_ROOT / "fonts",
+        Path("/usr/share/fonts/truetype/dejavu"),
+        Path("/usr/share/fonts/dejavu"),
+        Path("/usr/share/fonts/truetype/liberation"),
+        Path("/System/Library/Fonts/Supplemental"),
+        Path(r"C:\Windows\Fonts"),
     ]
-    for path in candidates:
-        if Path(path).is_file():
-            return ImageFont.truetype(path, size)
+
+    for directory in search_dirs:
+        for name in file_names:
+            path = directory / name
+            if path.is_file():
+                return ImageFont.truetype(str(path), size)
+
     return ImageFont.load_default()
 
 
