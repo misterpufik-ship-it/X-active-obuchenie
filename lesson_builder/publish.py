@@ -164,6 +164,48 @@ def publish_to_site(project_id: str, *, skip_deploy: bool = False) -> dict[str, 
     }
 
 
+def _remove_material_assets(material_id: str) -> None:
+    if not material_id:
+        return
+    for path in ASSETS_DIR.glob(f"{material_id}_step_*.png"):
+        path.unlink(missing_ok=True)
+
+
+def unpublish_from_site(project_id: str) -> dict[str, Any]:
+    data = storage.load_project(project_id)
+    material_id = data.get("publishedId") or ""
+    items = _load_published()
+    removed: dict[str, Any] | None = None
+    updated: list[dict[str, Any]] = []
+    for item in items:
+        same_project = item.get("builderProjectId") == project_id
+        same_id = material_id and item.get("id") == material_id
+        if same_project or same_id:
+            removed = item
+            continue
+        updated.append(item)
+
+    if not removed:
+        raise RuntimeError("Этот проект не найден в учебной базе.")
+
+    resolved_id = str(removed.get("id") or material_id or project_id)
+    _save_published(updated)
+    _remove_material_assets(resolved_id)
+
+    data["status"] = "draft"
+    data["statusMessage"] = f"Удалено из учебной базы: {resolved_id}"
+    storage.save_project(data)
+
+    deploy_result = auto_deploy(resolved_id, ["published-lessons.json"])
+    return {
+        "materialId": resolved_id,
+        "removed": True,
+        "deployed": deploy_result.get("deployed", False),
+        "message": deploy_result.get("message") or f"Урок «{resolved_id}» удалён из учебной базы.",
+        "url": f"https://nostradamus-1503.ru/obuchenie/",
+    }
+
+
 def update_published_lesson(material_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     items = _load_published()
     index = next((i for i, item in enumerate(items) if item.get("id") == material_id), None)

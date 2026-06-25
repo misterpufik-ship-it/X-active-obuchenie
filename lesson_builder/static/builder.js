@@ -85,6 +85,7 @@ const nodes = {
   canvasLightboxClose: document.querySelector("#canvas-lightbox-close"),
   canvasPlaceholderClose: document.querySelector("#canvas-placeholder-close"),
   publishButton: document.querySelector("#publish-project"),
+  unpublishButton: document.querySelector("#unpublish-project"),
   formatBoldBubble: document.querySelector("#rich-format-bubble"),
   formatBoldBtn: document.querySelector("#format-bold-btn"),
   formatNormalBtn: document.querySelector("#format-normal-btn"),
@@ -748,8 +749,23 @@ function renderEditor() {
 
   renderStepsList();
   renderFrameSelect();
+  updatePublishControls();
   void renderStepEditor();
   updateRecleanButton();
+}
+
+function updatePublishControls() {
+  const project = state.project;
+  if (!project) return;
+  const isPublished = project.status === "published";
+  const hasSteps = (project.steps || []).length > 0;
+  const busy = project.status === "processing";
+  nodes.publishButton.disabled = busy || !hasSteps;
+  nodes.publishButton.textContent = isPublished ? "Обновить в учебной базе" : "Добавить в учебную базу";
+  if (nodes.unpublishButton) {
+    nodes.unpublishButton.classList.toggle("hidden", !isPublished);
+    nodes.unpublishButton.disabled = busy;
+  }
 }
 
 function renderStepsList() {
@@ -1076,6 +1092,32 @@ document.querySelector("#publish-project").addEventListener("click", async () =>
   } finally {
     button.disabled = false;
     button.textContent = originalText;
+    updatePublishControls();
+  }
+});
+
+document.querySelector("#unpublish-project")?.addEventListener("click", async () => {
+  if (!state.project || nodes.unpublishButton?.disabled) return;
+  const title = state.project.title || "этот урок";
+  if (!confirm(`Удалить «${title}» из учебной базы на сайте?\n\nПроект в конструкторе сохранится, урок просто пропадёт из списка на сайте.`)) {
+    return;
+  }
+  const button = nodes.unpublishButton;
+  const originalText = button.textContent;
+  try {
+    button.disabled = true;
+    button.textContent = "Удаление…";
+    await flushPendingSave();
+    const result = await api(`/api/projects/${state.project.id}/unpublish`, { method: "POST" });
+    state.project = await api(`/api/projects/${state.project.id}`);
+    renderEditor();
+    nodes.statusMessage.textContent = result.message || "Урок удалён из учебной базы.";
+  } catch (error) {
+    nodes.statusMessage.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+    updatePublishControls();
   }
 });
 

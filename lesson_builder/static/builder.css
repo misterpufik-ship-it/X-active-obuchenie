@@ -153,6 +153,7 @@ button {
 .primary-btn,
 .secondary-btn,
 .ghost-btn,
+.danger-btn,
 .tool-btn {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -169,6 +170,24 @@ button {
   background: #fff;
   border-color: var(--line);
   color: var(--ink);
+}
+
+.danger-btn {
+  background: #fff5f5;
+  border-color: #ef9a9a;
+  color: #c62828;
+}
+
+.danger-btn:hover:not(:disabled) {
+  background: #e53935;
+  border-color: #e53935;
+  color: #fff;
+}
+
+.danger-btn:disabled,
+.primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .ghost-btn,

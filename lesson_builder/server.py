@@ -171,6 +171,18 @@ def api_publish_project(project_id: str):
         return jsonify({"error": str(exc)}), 500
 
 
+@app.post("/api/projects/<project_id>/unpublish")
+def api_unpublish_project(project_id: str):
+    try:
+        result = publish.unpublish_from_site(project_id)
+        return jsonify(result)
+    except FileNotFoundError:
+        return jsonify({"error": "Проект не найден"}), 404
+    except Exception as exc:  # noqa: BLE001
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
+
+
 @app.delete("/api/projects/<project_id>")
 def api_delete_project(project_id: str):
     folder = storage.project_dir(project_id)

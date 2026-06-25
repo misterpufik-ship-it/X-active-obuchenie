@@ -54,6 +54,10 @@ try {
     & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=15 $target $remoteCommand
     if ($LASTEXITCODE -ne 0) { throw "Remote VPS deploy failed." }
 
+    $pruneScript = "/srv/deploy/projects/$Project/repo/deploy/prune-beget-backups.sh"
+    & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=20 $target "chmod +x $pruneScript 2>/dev/null; sudo -u deploy bash $pruneScript 2"
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Backup prune failed; check hosting disk manually." }
+
     $localVideos = Join-Path $RepoRoot "site\videos"
     if (Test-Path $localVideos) {
         $uploadDir = "/srv/deploy/projects/$Project/video-upload"
