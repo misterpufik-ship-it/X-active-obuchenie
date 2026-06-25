@@ -28,14 +28,14 @@ def _save_published(items: list[dict[str, Any]]) -> None:
     PUBLISHED_FILE.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def publish_to_site(project_id: str) -> dict[str, Any]:
+def publish_to_site(project_id: str, *, skip_deploy: bool = False) -> dict[str, Any]:
     data = storage.load_project(project_id)
     if not data.get("steps"):
         raise RuntimeError("Добавьте хотя бы один шаг перед публикацией.")
 
-    material_id = storage.slugify(data.get("title", "urok"))
     existing = _load_published()
-    if any(item.get("id") == material_id for item in existing):
+    material_id = data.get("publishedId") or storage.slugify(data.get("title", "urok"))
+    if not data.get("publishedId") and any(item.get("id") == material_id for item in existing):
         material_id = f"{material_id}-{project_id[-6:]}"
 
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -104,7 +104,11 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
         "issues": issues,
     }
 
-    updated = [item for item in existing if item.get("id") != material_id]
+    updated = [
+        item
+        for item in existing
+        if item.get("id") != material_id and item.get("builderProjectId") != project_id
+    ]
     updated.append(material)
     _save_published(updated)
 
@@ -112,6 +116,16 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
     data["statusMessage"] = f"Опубликовано в учебной базе: {material_id}"
     data["publishedId"] = material_id
     storage.save_project(data)
+
+    if skip_deploy:
+        return {
+            "materialId": material_id,
+            "sitePath": str(PUBLISHED_FILE.relative_to(SITE_ROOT.parent)),
+            "steps": len(material_steps),
+            "url": f"https://nostradamus-1503.ru/obuchenie/?lesson={material_id}",
+            "deployed": False,
+            "message": f"Каталог обновлён локально: {material_id}",
+        }
 
     deploy_result = auto_deploy(material_id, deploy_files)
     status_message = deploy_result.get("message") or f"Опубликовано: {material_id}"
