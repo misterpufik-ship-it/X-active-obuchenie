@@ -113,6 +113,7 @@ function initCanvasEditor() {
       onSelectionChange: () => updatePaletteVisibility(),
       onRequestSelectTool: () => activateTool("select"),
       onLabelsChange: () => renderActionMarkers(),
+      getNextLabel: () => window.nextAnnotationLabel(stepAllAnnotations(selectedStep())),
     }
   );
   canvasEditor.setColor(state.activeColor);
@@ -128,26 +129,68 @@ function activateTool(tool) {
   updatePaletteVisibility();
 }
 
+function stepAllAnnotations(step = selectedStep()) {
+  const items = [];
+  normalizeStepFrames(step).forEach((frame) => {
+    (frame.annotations || []).forEach((item) => items.push(item));
+  });
+  return items;
+}
+
+function stepAnnotationLabels(step = selectedStep()) {
+  const labels = [];
+  const seen = new Set();
+  normalizeStepFrames(step).forEach((frame) => {
+    (frame.annotations || []).forEach((item) => {
+      const label = item?.label;
+      if (!label) return;
+      const key = String(label);
+      if (seen.has(key)) return;
+      seen.add(key);
+      labels.push(key);
+    });
+  });
+  return labels.sort((a, b) => {
+    const na = Number.parseInt(a, 10);
+    const nb = Number.parseInt(b, 10);
+    if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
+    return a.localeCompare(b, "ru");
+  });
+}
+
+function findAnnotationByLabel(label, step = selectedStep()) {
+  const key = String(label || "").trim();
+  if (!key) return null;
+  for (const frame of normalizeStepFrames(step)) {
+    const item = (frame.annotations || []).find((entry) => String(entry.label || "") === key);
+    if (item) return { frame, item };
+  }
+  return null;
+}
+
 function frameAnnotationLabels(frame = selectedStepFrame()) {
-  return (frame?.annotations || [])
-    .filter((item) => item.label)
-    .map((item) => String(item.label));
+  return stepAnnotationLabels(selectedStep());
 }
 
 function findAnnotationIdByLabel(label, frame = selectedStepFrame()) {
-  const key = String(label || "").trim();
-  if (!key) return null;
-  const item = (frame?.annotations || []).find((entry) => String(entry.label || "") === key);
-  return item?.id || null;
+  return findAnnotationByLabel(label)?.item?.id || null;
 }
 
-function pulseAnnotation(label) {
-  const editor = initCanvasEditor();
-  const id = findAnnotationIdByLabel(label) || editor.findByLabel(label)?.id;
-  if (!id) {
-    nodes.statusMessage.textContent = `Метка «${label}» не найдена на этом скрине.`;
+async function pulseAnnotation(label) {
+  const match = findAnnotationByLabel(label);
+  if (!match) {
+    nodes.statusMessage.textContent = `Метка «${label}» не найдена в этом шаге.`;
     return;
   }
+
+  if (state.selectedFrameId !== match.frame.id) {
+    await flushPendingSave();
+    state.selectedFrameId = match.frame.id;
+    await renderStepEditor();
+  }
+
+  const editor = initCanvasEditor();
+  const id = match.item.id;
   editor.selectAnnotation(id);
   if (pulseAnim) cancelAnimationFrame(pulseAnim);
   const start = performance.now();
@@ -210,7 +253,7 @@ function renderActionMarkers() {
     return;
   }
   const insertMode = actionFieldEditing;
-  const labelText = insertMode ? "Вставить в действие:" : "Метки на скрине:";
+  const labelText = insertMode ? "Вставить в действие:" : "Метки шага (все скрины):";
   const title = insertMode ? "Вставить номер в текст действия" : "Подсветить на скрине";
   nodes.stepActionMarkers.innerHTML = `<span class="action-markers-label">${labelText}</span>${labels
     .map(

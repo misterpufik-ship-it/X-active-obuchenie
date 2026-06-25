@@ -23,15 +23,19 @@ function annotationId() {
 }
 
 function nextAnnotationLabel(annotations) {
-  const used = new Set(
-    (annotations || [])
-      .map((item) => item.label)
-      .filter(Boolean)
-      .map(String)
-  );
-  let n = 1;
-  while (used.has(String(n))) n += 1;
-  return String(n);
+  let max = 0;
+  for (const item of annotations || []) {
+    const num = Number.parseInt(String(item?.label ?? ""), 10);
+    if (!Number.isNaN(num) && num > max) max = num;
+  }
+  return String(max + 1);
+}
+
+function allocateAnnotationLabel(annotations, hooks) {
+  if (typeof hooks.getNextLabel === "function") {
+    return hooks.getNextLabel();
+  }
+  return nextAnnotationLabel(annotations);
 }
 
 function labelCenter(item) {
@@ -677,7 +681,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
         h: Math.abs(point.y - start.y),
         color: state.color,
         stroke: state.stroke,
-        label: nextAnnotationLabel(state.annotations),
+        label: allocateAnnotationLabel(state.annotations, hooks),
       });
       return;
     }
@@ -691,7 +695,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
         r: Math.hypot(point.x - start.x, point.y - start.y),
         color: state.color,
         stroke: state.stroke,
-        label: nextAnnotationLabel(state.annotations),
+        label: allocateAnnotationLabel(state.annotations, hooks),
       });
       return;
     }
