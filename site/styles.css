@@ -724,6 +724,42 @@ button {
   line-height: 1.18;
 }
 
+.step-display-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.display-mode-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.display-mode-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: #f8fbfd;
+  color: #4d5c6c;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.display-mode-btn:last-child {
+  border-right: 0;
+}
+
+.display-mode-btn.is-active {
+  background: var(--cyan);
+  color: #fff;
+}
+
 .icon-button {
   width: 44px;
   height: 44px;
@@ -842,6 +878,45 @@ button {
   padding: 24px 14px;
   color: var(--muted);
   text-align: center;
+}
+
+#guide-view.is-extended .step-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 18px;
+  align-items: start;
+}
+
+#guide-view.is-extended .screenshot-gallery {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#guide-view.is-extended .step-copy {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+#guide-view.is-extended .screenshot-frame {
+  border-width: 2px;
+  box-shadow: 0 10px 28px rgba(16, 48, 74, 0.1);
+}
+
+#guide-view.is-extended .screenshot-frame img {
+  width: 100%;
+  height: auto;
+}
+
+#guide-view.is-extended .instruction-grid {
+  gap: 10px;
+}
+
+#guide-view.is-extended .instruction-grid div {
+  padding: 12px;
 }
 
 .checklist {
@@ -994,6 +1069,26 @@ button {
     grid-template-columns: 1fr;
   }
 
+  #guide-view.is-extended .step-panel {
+    grid-template-columns: 1fr;
+  }
+
+  #guide-view.is-extended .screenshot-gallery,
+  #guide-view.is-extended .step-copy {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  #guide-view.is-extended .screenshot-gallery {
+    order: -1;
+  }
+
+  #guide-view.is-extended .step-copy {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
   .topbar {
     flex-direction: column;
     align-items: stretch;
@@ -1038,5 +1133,9 @@ button {
 
   .view-tab {
     min-width: 150px;
+  }
+
+  .step-display-bar {
+    justify-content: space-between;
   }
 }

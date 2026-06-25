@@ -567,7 +567,8 @@ const state = {
   query: "",
   completed: {},
   mode: "library",
-  editMode: false
+  editMode: false,
+  displayMode: "standard"
 };
 
 const nodes = {
@@ -593,6 +594,8 @@ const nodes = {
     issues: document.querySelector("#issues-view"),
     video: document.querySelector("#video-view")
   },
+  guideView: document.querySelector("#guide-view"),
+  displayModeButtons: document.querySelectorAll(".display-mode-btn"),
   processStrip: document.querySelector("#process-strip"),
   prevStep: document.querySelector("#prev-step"),
   nextStep: document.querySelector("#next-step"),
@@ -1008,6 +1011,20 @@ nodes.modeButtons.forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
 
+function setDisplayMode(mode) {
+  const nextMode = mode === "extended" ? "extended" : "standard";
+  state.displayMode = nextMode;
+  localStorage.setItem("lessonDisplayMode", nextMode);
+  nodes.guideView?.classList.toggle("is-extended", nextMode === "extended");
+  nodes.displayModeButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.display === nextMode);
+  });
+}
+
+nodes.displayModeButtons.forEach((button) => {
+  button.addEventListener("click", () => setDisplayMode(button.dataset.display));
+});
+
 function setView(view) {
   state.currentView = view;
   nodes.viewTabs.forEach((tab) => {
@@ -1109,6 +1126,8 @@ async function bootstrap() {
   if (lessonId && materials.some((material) => material.id === lessonId)) {
     state.selectedMaterialId = lessonId;
   }
+  const savedDisplay = localStorage.getItem("lessonDisplayMode");
+  setDisplayMode(savedDisplay === "extended" ? "extended" : "standard");
   renderShell();
   renderLesson();
   setView("guide");
