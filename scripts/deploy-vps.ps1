@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$SkipPush,
     [switch]$AllowDirty,
     [string]$Project = "x-active-obuchenie",
@@ -64,7 +64,7 @@ try {
             "sudo -u deploy rsync -az /tmp/x-active-obuchenie-videos/videos/",
             "mrpuffch@mrpuffch.beget.tech:/home/m/mrpuffch/nostradamus-1503.ru/public_html/obuchenie/videos/"
         ) -join " "
-        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=30 $target $videoSync
+        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=60 $target $videoSync
         if ($LASTEXITCODE -ne 0) { throw "Video sync to BeGet failed." }
     }
 }
