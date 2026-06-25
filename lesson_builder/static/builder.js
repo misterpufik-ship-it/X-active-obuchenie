@@ -61,7 +61,6 @@ const nodes = {
   stepTitle: document.querySelector("#step-title"),
   stepWhy: document.querySelector("#step-why"),
   stepAction: document.querySelector("#step-action"),
-  stepActionView: document.querySelector("#step-action-view"),
   stepActionMarkers: document.querySelector("#step-action-markers"),
   actionField: document.querySelector("#action-field"),
   stepComment: document.querySelector("#step-comment"),
@@ -116,6 +115,23 @@ function setRichHtml(node, value) {
   node.innerHTML = value || "";
 }
 
+function normalizeActionHtml(html) {
+  const template = document.createElement("template");
+  template.innerHTML = String(html || "");
+  template.content.querySelectorAll("button, .action-ref-btn, .action-ref-chip").forEach((node) => {
+    node.replaceWith(document.createTextNode(node.textContent || ""));
+  });
+  return sanitizeLessonHtml(template.innerHTML);
+}
+
+function setActionHtml(value) {
+  setRichHtml(nodes.stepAction, normalizeActionHtml(value));
+}
+
+function getActionHtml() {
+  return normalizeActionHtml(getRichHtml(nodes.stepAction));
+}
+
 function activeRichField() {
   const active = document.activeElement;
   if (active?.classList?.contains("rich-field")) return active;
@@ -158,7 +174,7 @@ function applyBoldRedFormat() {
 function sanitizeLessonHtml(html) {
   const template = document.createElement("template");
   template.innerHTML = String(html || "");
-  const allowed = new Set(["STRONG", "B", "SPAN", "BR", "P", "DIV", "BUTTON"]);
+  const allowed = new Set(["STRONG", "B", "SPAN", "BR", "P", "DIV"]);
   const walk = (node) => {
     [...node.children].forEach((child) => {
       if (!allowed.has(child.tagName)) {
@@ -168,10 +184,6 @@ function sanitizeLessonHtml(html) {
       }
       if (child.tagName === "SPAN" && !child.classList.contains("lesson-text-red")) {
         child.classList.add("lesson-text-red");
-      }
-      if (child.tagName === "BUTTON" && !child.classList.contains("action-ref-btn")) {
-        child.replaceWith(document.createTextNode(child.textContent || ""));
-        return;
       }
       walk(child);
     });
@@ -191,7 +203,6 @@ function initCanvasEditor() {
       frame.annotations = annotations;
       scheduleSaveStep();
       renderActionMarkers();
-      if (!actionFieldEditing) renderActionView();
     },
     {
       onSelectionChange: () => updatePaletteVisibility(),
@@ -311,14 +322,14 @@ function insertLabelIntoAction(label) {
       selection.removeAllRanges();
       selection.addRange(range);
       const step = selectedStep();
-      if (step) step.action = getRichHtml(field);
+      if (step) step.action = getActionHtml();
       scheduleSaveStep();
       return true;
     }
   }
   field.append(document.createTextNode(insert));
   const step = selectedStep();
-  if (step) step.action = getRichHtml(field);
+  if (step) step.action = getActionHtml();
   scheduleSaveStep();
   return true;
 }
@@ -355,37 +366,10 @@ function renderActionMarkers() {
   });
 }
 
-function renderActionView() {
-  if (!nodes.stepActionView || actionFieldEditing) return;
-  const html = getRichHtml(nodes.stepAction);
-  const text = plainTextFromHtml(html);
-  const labels = new Set(frameAnnotationLabels());
-  if (!text.trim()) {
-    nodes.stepActionView.innerHTML = `<span class="action-view-placeholder">Напишите действие. Укажите номера меток (1, 2, 3…) — они станут кликабельными.</span>`;
-    return;
-  }
-  let rendered = sanitizeLessonHtml(html);
-  if (labels.size) {
-    rendered = rendered.replace(/>([^<]+)</g, (chunk, inner) => {
-      const replaced = inner.replace(/(\d+)/g, (full, num) =>
-        labels.has(num)
-          ? `<span class="action-ref-chip">${escapeHtml(num)}</span>`
-          : full
-      );
-      return `>${replaced}<`;
-    });
-  }
-  nodes.stepActionView.innerHTML = rendered;
-}
-
 function setActionFieldEditing(editing) {
   actionFieldEditing = editing;
   nodes.actionField?.classList.toggle("is-editing", editing);
-  if (editing && nodes.stepAction) {
-    setRichHtml(nodes.stepAction, selectedStep()?.action || getRichHtml(nodes.stepAction));
-  }
   renderActionMarkers();
-  if (!editing) renderActionView();
 }
 
 function updatePaletteVisibility() {
@@ -732,7 +716,7 @@ async function renderStepEditor() {
   nodes.stepEditorTitle.textContent = `Шаг ${step.number} · скриншотов: ${normalizeStepFrames(step).length}`;
   nodes.stepTitle.value = step.title || "";
   setRichHtml(nodes.stepWhy, step.why || "");
-  setRichHtml(nodes.stepAction, step.action || "");
+  setActionHtml(step.action || "");
   setRichHtml(nodes.stepComment, step.comment || "");
   setRichHtml(nodes.stepResult, step.result || "");
 
@@ -751,7 +735,6 @@ async function renderStepEditor() {
   editor.redraw(bgImage);
   updatePaletteVisibility();
   renderActionMarkers();
-  renderActionView();
 }
 
 async function loadCanvasImage(frame) {
@@ -805,7 +788,7 @@ function syncStepFromForm() {
   if (!step) return;
   step.title = nodes.stepTitle.value.trim();
   step.why = getRichHtml(nodes.stepWhy);
-  step.action = getRichHtml(nodes.stepAction);
+  step.action = getActionHtml();
   step.comment = getRichHtml(nodes.stepComment);
   step.result = getRichHtml(nodes.stepResult);
   syncStepLegacyFields(step);
@@ -880,36 +863,12 @@ nodes.fieldWhisperModel?.addEventListener("change", () => {
   scheduleSaveProject();
 });
 
-[nodes.stepTitle, nodes.stepWhy, nodes.stepComment, nodes.stepResult].forEach((node) => {
+[nodes.stepTitle, nodes.stepWhy, nodes.stepComment, nodes.stepResult, nodes.stepAction].forEach((node) => {
   node.addEventListener("input", scheduleSaveStep);
-});
-
-nodes.stepAction.addEventListener("input", () => {
-  scheduleSaveStep();
-  if (!actionFieldEditing) renderActionView();
 });
 
 nodes.stepAction.addEventListener("focus", () => setActionFieldEditing(true));
 nodes.stepAction.addEventListener("blur", () => setActionFieldEditing(false));
-
-function focusActionEditor() {
-  setActionFieldEditing(true);
-  requestAnimationFrame(() => {
-    nodes.stepAction.focus();
-    const selection = window.getSelection();
-    if (!selection) return;
-    const range = document.createRange();
-    range.selectNodeContents(nodes.stepAction);
-    range.collapse(false);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  });
-}
-
-nodes.stepActionView?.addEventListener("mousedown", (event) => {
-  event.preventDefault();
-  focusActionEditor();
-});
 
 document.querySelector("#save-project").addEventListener("click", async () => {
   try {

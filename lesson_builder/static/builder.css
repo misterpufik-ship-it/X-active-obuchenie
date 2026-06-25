@@ -311,7 +311,8 @@ button {
 
 .meta-grid label,
 .step-fields label,
-.frame-picker label {
+.frame-picker label,
+.meta-grid .field-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -799,57 +800,9 @@ dialog menu {
 }
 
 .action-field {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.action-field:not(.is-editing) .action-rich {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.action-field-view {
-  min-height: 72px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  cursor: text;
-  user-select: none;
-}
-
-.action-field.is-editing .action-field-view {
-  display: none;
-}
-
-.action-ref-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 8px;
-  border: 2px solid #e53935;
-  border-radius: 999px;
-  background: #fff5f5;
-  color: #c62828;
-  font-weight: 800;
-  font-size: 13px;
-  line-height: 1;
-  vertical-align: middle;
-  pointer-events: none;
-}
-
-.action-view-placeholder {
-  color: var(--muted);
 }
 
 .action-markers {
