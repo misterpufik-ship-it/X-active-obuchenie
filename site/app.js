@@ -568,7 +568,7 @@ const state = {
   completed: {},
   mode: "library",
   editMode: false,
-  displayMode: "standard"
+  displayMode: "extended"
 };
 
 const nodes = {
@@ -1127,7 +1127,7 @@ async function bootstrap() {
     state.selectedMaterialId = lessonId;
   }
   const savedDisplay = localStorage.getItem("lessonDisplayMode");
-  setDisplayMode(savedDisplay === "extended" ? "extended" : "standard");
+  setDisplayMode(savedDisplay === "standard" ? "standard" : "extended");
   renderShell();
   renderLesson();
   setView("guide");

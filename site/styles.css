@@ -881,24 +881,24 @@ button {
 }
 
 #guide-view.is-extended .step-panel {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
-#guide-view.is-extended .screenshot-gallery {
-  grid-column: 1;
-  grid-row: 1;
-}
-
 #guide-view.is-extended .step-copy {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 1;
   position: sticky;
   top: 16px;
   max-height: calc(100vh - 150px);
   overflow-y: auto;
-  padding-right: 2px;
+  padding-right: 6px;
+}
+
+#guide-view.is-extended .screenshot-gallery {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 #guide-view.is-extended .screenshot-frame {
@@ -1077,10 +1077,6 @@ button {
   #guide-view.is-extended .step-copy {
     grid-column: auto;
     grid-row: auto;
-  }
-
-  #guide-view.is-extended .screenshot-gallery {
-    order: -1;
   }
 
   #guide-view.is-extended .step-copy {
