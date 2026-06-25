@@ -446,7 +446,6 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
     state.pointerDown = false;
     state.selectedId = item.id;
     notifySelection();
-    hooks.onRequestSelectTool?.();
     onChange(getAnnotations());
     schedulePaint();
     syncPaletteActive();

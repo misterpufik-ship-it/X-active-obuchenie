@@ -721,8 +721,86 @@ function labelsFromScreenshots(screenshots) {
   return labels;
 }
 
+function plainTextFromHtml(value) {
+  const div = document.createElement("div");
+  div.innerHTML = String(value || "");
+  return (div.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function sanitizeLessonHtml(html) {
+  const template = document.createElement("template");
+  template.innerHTML = String(html || "");
+  const allowed = new Set(["STRONG", "B", "SPAN", "BR", "P", "DIV"]);
+  const walk = (node) => {
+    [...node.children].forEach((child) => {
+      if (!allowed.has(child.tagName)) {
+        child.replaceWith(document.createTextNode(child.textContent || ""));
+        return;
+      }
+      if (child.tagName === "SPAN" && !child.classList.contains("lesson-text-red")) {
+        child.classList.add("lesson-text-red");
+      }
+      walk(child);
+    });
+  };
+  walk(template.content);
+  return template.innerHTML;
+}
+
+function renderRichText(html) {
+  return sanitizeLessonHtml(html);
+}
+
+function renderInteractiveActionHtml(html, labels) {
+  const source = String(html || "");
+  if (!plainTextFromHtml(source)) return "";
+  const labelSet = labels instanceof Set ? labels : new Set(labels);
+  const container = document.createElement("div");
+  container.innerHTML = sanitizeLessonHtml(source);
+
+  const walk = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent || "";
+      if (!text || !labelSet.size) return;
+      const re = /(\d+)/g;
+      if (!re.test(text)) return;
+      re.lastIndex = 0;
+      const fragment = document.createDocumentFragment();
+      let last = 0;
+      let match;
+      while ((match = re.exec(text)) !== null) {
+        fragment.append(document.createTextNode(text.slice(last, match.index)));
+        const label = match[1];
+        if (labelSet.has(label)) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "action-ref-btn";
+          button.dataset.label = label;
+          button.textContent = label;
+          fragment.append(button);
+        } else {
+          fragment.append(document.createTextNode(label));
+        }
+        last = match.index + label.length;
+      }
+      fragment.append(document.createTextNode(text.slice(last)));
+      node.replaceWith(fragment);
+      return;
+    }
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      [...node.childNodes].forEach(walk);
+    }
+  };
+
+  [...container.childNodes].forEach(walk);
+  return container.innerHTML;
+}
+
 function renderInteractiveAction(text, labels) {
   const source = String(text || "");
+  if (source.includes("<")) {
+    return renderInteractiveActionHtml(source, labels);
+  }
   if (!source.trim()) return "";
   const labelSet = labels instanceof Set ? labels : new Set(labels);
   const parts = [];
@@ -900,17 +978,17 @@ function renderLesson() {
 
   nodes.stepKicker.textContent = `Шаг ${state.currentStep + 1} из ${material.steps.length}`;
   nodes.stepTitle.textContent = step.title;
-  nodes.stepWhy.textContent = step.why;
+  nodes.stepWhy.innerHTML = renderRichText(step.why);
   const screenshots = stepScreenshots(step);
   const labels = labelsFromScreenshots(screenshots);
   if (state.editMode) {
-    nodes.stepAction.textContent = step.action;
+    nodes.stepAction.innerHTML = renderRichText(step.action);
   } else if (labels.size) {
     nodes.stepAction.innerHTML = renderInteractiveAction(step.action, labels);
   } else {
-    nodes.stepAction.textContent = step.action;
+    nodes.stepAction.innerHTML = renderRichText(step.action);
   }
-  nodes.stepResult.textContent = step.result;
+  nodes.stepResult.innerHTML = renderRichText(step.result);
   if (!screenshots.length) {
     nodes.stepImages.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
   } else {
@@ -1082,7 +1160,13 @@ function canEditMaterial(material) {
 function setLessonEditMode(enabled) {
   const step = selectedMaterial().steps[state.currentStep];
   if (enabled && step && nodes.stepAction) {
-    nodes.stepAction.textContent = step.action || "";
+    nodes.stepAction.innerHTML = renderRichText(step.action || "");
+  }
+  if (enabled && step && nodes.stepWhy) {
+    nodes.stepWhy.innerHTML = renderRichText(step.why || "");
+  }
+  if (enabled && step && nodes.stepResult) {
+    nodes.stepResult.innerHTML = renderRichText(step.result || "");
   }
   state.editMode = enabled;
   editableLessonFields().forEach((node) => {
@@ -1102,9 +1186,9 @@ function readLessonEditsFromDom(material) {
   material.description = nodes.lessonDescription.textContent.trim();
   if (step) {
     step.title = nodes.stepTitle.textContent.trim();
-    step.why = nodes.stepWhy.textContent.trim();
-    step.action = nodes.stepAction.textContent.trim();
-    step.result = nodes.stepResult.textContent.trim();
+    step.why = nodes.stepWhy.innerHTML.trim();
+    step.action = nodes.stepAction.innerHTML.trim();
+    step.result = nodes.stepResult.innerHTML.trim();
     if (step.caption !== undefined) {
       step.caption = step.title;
     }

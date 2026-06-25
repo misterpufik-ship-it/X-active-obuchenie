@@ -948,6 +948,11 @@ button {
   color: #fff;
 }
 
+.lesson-text-red {
+  color: #e53935;
+  font-weight: 800;
+}
+
 .screenshot-frame img {
   display: block;
   width: 100%;

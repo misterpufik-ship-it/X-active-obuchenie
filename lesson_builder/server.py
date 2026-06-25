@@ -254,9 +254,12 @@ def api_upload_image(project_id: str):
     if apply_step:
         for step in data.get("steps", []):
             if step.get("id") == apply_step:
+                frames = storage.get_step_frames(step)
+                if frames and frames[-1].get("frameFile") == saved["file"]:
+                    saved["frameId"] = frames[-1].get("id")
+                    break
                 frame_id = f"frame-{uuid.uuid4().hex[:8]}"
                 new_frame = {"id": frame_id, "frameFile": saved["file"], "annotations": []}
-                storage.get_step_frames(step)
                 step["frames"].append(new_frame)
                 step["frameFile"] = saved["file"]
                 saved["frameId"] = frame_id

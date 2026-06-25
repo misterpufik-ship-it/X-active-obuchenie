@@ -95,6 +95,90 @@ let pulseAnim = null;
 let actionFieldEditing = false;
 let annotationDockParent = null;
 let annotationDockNext = null;
+let uploadInProgress = false;
+let pasteHandled = false;
+
+const RICH_FIELDS = () => [nodes.stepWhy, nodes.stepComment, nodes.stepAction, nodes.stepResult].filter(Boolean);
+
+function plainTextFromHtml(value) {
+  const div = document.createElement("div");
+  div.innerHTML = String(value || "");
+  return (div.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function getRichHtml(node) {
+  if (!node) return "";
+  return node.innerHTML.trim();
+}
+
+function setRichHtml(node, value) {
+  if (!node) return;
+  node.innerHTML = value || "";
+}
+
+function activeRichField() {
+  const active = document.activeElement;
+  if (active?.classList?.contains("rich-field")) return active;
+  return RICH_FIELDS().find((field) => field === active) || null;
+}
+
+function applyBoldRedFormat() {
+  const field = activeRichField();
+  if (!field) {
+    nodes.statusMessage.textContent = "Сначала кликните в поле шага и выделите текст.";
+    return;
+  }
+  field.focus();
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    nodes.statusMessage.textContent = "Выделите фрагмент текста для форматирования.";
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  if (!field.contains(range.commonAncestorContainer)) return;
+
+  const wrapper = document.createElement("strong");
+  wrapper.className = "lesson-text-red";
+  try {
+    range.surroundContents(wrapper);
+  } catch {
+    const fragment = range.extractContents();
+    wrapper.appendChild(fragment);
+    range.insertNode(wrapper);
+  }
+  selection.removeAllRanges();
+  const next = document.createRange();
+  next.selectNodeContents(wrapper);
+  next.collapse(false);
+  selection.addRange(next);
+  scheduleSaveStep();
+  nodes.statusMessage.textContent = "Текст выделен жирным красным.";
+}
+
+function sanitizeLessonHtml(html) {
+  const template = document.createElement("template");
+  template.innerHTML = String(html || "");
+  const allowed = new Set(["STRONG", "B", "SPAN", "BR", "P", "DIV", "BUTTON"]);
+  const walk = (node) => {
+    [...node.children].forEach((child) => {
+      if (!allowed.has(child.tagName)) {
+        const text = document.createTextNode(child.textContent || "");
+        child.replaceWith(text);
+        return;
+      }
+      if (child.tagName === "SPAN" && !child.classList.contains("lesson-text-red")) {
+        child.classList.add("lesson-text-red");
+      }
+      if (child.tagName === "BUTTON" && !child.classList.contains("action-ref-btn")) {
+        child.replaceWith(document.createTextNode(child.textContent || ""));
+        return;
+      }
+      walk(child);
+    });
+  };
+  walk(template.content);
+  return template.innerHTML;
+}
 
 function initCanvasEditor() {
   if (canvasEditor) return canvasEditor;
@@ -111,7 +195,6 @@ function initCanvasEditor() {
     },
     {
       onSelectionChange: () => updatePaletteVisibility(),
-      onRequestSelectTool: () => activateTool("select"),
       onLabelsChange: () => renderActionMarkers(),
       getNextLabel: () => window.nextAnnotationLabel(stepAllAnnotations(selectedStep())),
     }
@@ -214,25 +297,28 @@ function insertLabelIntoAction(label) {
   const field = nodes.stepAction;
   if (!field || !actionFieldEditing) return false;
 
-  const start = field.selectionStart ?? field.value.length;
-  const end = field.selectionEnd ?? start;
-  const value = field.value;
-  const before = value.slice(0, start);
-  const after = value.slice(end);
-
-  let insert = String(label);
-  const needSpaceBefore = before.length > 0 && !/\s$/.test(before);
-  const needSpaceAfter = after.length > 0 && !/^\s|[,.!?;:)]/.test(after);
-  if (needSpaceBefore) insert = ` ${insert}`;
-  if (needSpaceAfter) insert = `${insert} `;
-
-  field.value = before + insert + after;
-  const cursor = before.length + insert.length;
   field.focus();
-  field.setSelectionRange(cursor, cursor);
-
+  const insert = String(label);
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount) {
+    const range = selection.getRangeAt(0);
+    if (field.contains(range.commonAncestorContainer)) {
+      range.deleteContents();
+      const textNode = document.createTextNode(insert);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      const step = selectedStep();
+      if (step) step.action = getRichHtml(field);
+      scheduleSaveStep();
+      return true;
+    }
+  }
+  field.append(document.createTextNode(insert));
   const step = selectedStep();
-  if (step) step.action = field.value;
+  if (step) step.action = getRichHtml(field);
   scheduleSaveStep();
   return true;
 }
@@ -271,28 +357,25 @@ function renderActionMarkers() {
 
 function renderActionView() {
   if (!nodes.stepActionView || actionFieldEditing) return;
-  const text = nodes.stepAction.value || "";
+  const html = getRichHtml(nodes.stepAction);
+  const text = plainTextFromHtml(html);
   const labels = new Set(frameAnnotationLabels());
   if (!text.trim()) {
     nodes.stepActionView.innerHTML = `<span class="action-view-placeholder">Напишите действие. Укажите номера меток (1, 2, 3…) — они станут кликабельными.</span>`;
     return;
   }
-  const parts = [];
-  const re = /(\d+)/g;
-  let last = 0;
-  let match;
-  while ((match = re.exec(text)) !== null) {
-    parts.push(escapeHtml(text.slice(last, match.index)));
-    const label = match[1];
-    if (labels.has(label)) {
-      parts.push(`<button type="button" class="action-ref-btn" data-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`);
-    } else {
-      parts.push(escapeHtml(label));
-    }
-    last = match.index + label.length;
+  let rendered = sanitizeLessonHtml(html);
+  if (labels.size) {
+    rendered = rendered.replace(/>([^<]+)</g, (chunk, inner) => {
+      const replaced = inner.replace(/(\d+)/g, (full, num) =>
+        labels.has(num)
+          ? `<button type="button" class="action-ref-btn" data-label="${escapeHtml(num)}">${escapeHtml(num)}</button>`
+          : full
+      );
+      return `>${replaced}<`;
+    });
   }
-  parts.push(escapeHtml(text.slice(last)));
-  nodes.stepActionView.innerHTML = parts.join("");
+  nodes.stepActionView.innerHTML = rendered;
   nodes.stepActionView.querySelectorAll(".action-ref-btn").forEach((button) => {
     button.addEventListener("click", () => pulseAnnotation(button.dataset.label));
   });
@@ -301,6 +384,9 @@ function renderActionView() {
 function setActionFieldEditing(editing) {
   actionFieldEditing = editing;
   nodes.actionField?.classList.toggle("is-editing", editing);
+  if (editing && nodes.stepAction) {
+    setRichHtml(nodes.stepAction, selectedStep()?.action || getRichHtml(nodes.stepAction));
+  }
   renderActionMarkers();
   if (!editing) renderActionView();
 }
@@ -648,10 +734,13 @@ async function renderStepEditor() {
 
   nodes.stepEditorTitle.textContent = `Шаг ${step.number} · скриншотов: ${normalizeStepFrames(step).length}`;
   nodes.stepTitle.value = step.title || "";
-  nodes.stepWhy.value = step.why || "";
-  nodes.stepAction.value = step.action || "";
-  nodes.stepComment.value = step.comment || "";
-  nodes.stepResult.value = step.result || "";
+  setRichHtml(nodes.stepWhy, step.why || "");
+  setRichHtml(nodes.stepAction, step.action || "");
+  setRichHtml(nodes.stepComment, step.comment || "");
+  setRichHtml(nodes.stepResult, step.result || "");
+
+  actionFieldEditing = false;
+  nodes.actionField?.classList.remove("is-editing");
 
   renderStepFramesStrip();
   const frame = selectedStepFrame(step);
@@ -718,10 +807,10 @@ function syncStepFromForm() {
   const step = selectedStep();
   if (!step) return;
   step.title = nodes.stepTitle.value.trim();
-  step.why = nodes.stepWhy.value.trim();
-  step.action = nodes.stepAction.value.trim();
-  step.comment = nodes.stepComment.value.trim();
-  step.result = nodes.stepResult.value.trim();
+  step.why = getRichHtml(nodes.stepWhy);
+  step.action = getRichHtml(nodes.stepAction);
+  step.comment = getRichHtml(nodes.stepComment);
+  step.result = getRichHtml(nodes.stepResult);
   syncStepLegacyFields(step);
 }
 
@@ -1020,41 +1109,47 @@ document.querySelector("#delete-step-frame").addEventListener("click", async () 
 
 async function uploadStepImage(file, { applyToStep = true, label = "вручную" } = {}) {
   if (!state.project || !file) return;
+  if (uploadInProgress) return;
   const step = selectedStep();
   if (applyToStep && !step) {
     throw new Error("Сначала выберите шаг слева.");
   }
 
-  cancelPendingSave();
-  if (step) {
-    syncStepFromForm();
-  }
+  uploadInProgress = true;
+  try {
+    cancelPendingSave();
+    if (step) {
+      syncStepFromForm();
+    }
 
-  const form = new FormData();
-  const name = file.name || `screenshot-${Date.now()}.png`;
-  form.append("image", file, name);
-  form.append("label", label);
-  if (applyToStep && step) {
-    form.append("applyToStep", step.id);
+    const form = new FormData();
+    const name = file.name || `screenshot-${Date.now()}.png`;
+    form.append("image", file, name);
+    form.append("label", label);
+    if (applyToStep && step) {
+      form.append("applyToStep", step.id);
+    }
+    const response = await fetch(appUrl(`/api/projects/${state.project.id}/upload-image`), {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) {
+      const payload = await response.json();
+      throw new Error(payload.error || "Не удалось загрузить изображение.");
+    }
+    state.project = await response.json();
+    const freshStep = selectedStep();
+    if (applyToStep && freshStep) {
+      normalizeStepFrames(freshStep);
+      const newest = freshStep.frames[freshStep.frames.length - 1];
+      if (newest) state.selectedFrameId = newest.id;
+    }
+    renderEditor();
+    await renderStepEditor();
+    nodes.statusMessage.textContent = state.project.statusMessage || "Скриншот добавлен.";
+  } finally {
+    uploadInProgress = false;
   }
-  const response = await fetch(appUrl(`/api/projects/${state.project.id}/upload-image`), {
-    method: "POST",
-    body: form,
-  });
-  if (!response.ok) {
-    const payload = await response.json();
-    throw new Error(payload.error || "Не удалось загрузить изображение.");
-  }
-  state.project = await response.json();
-  const freshStep = selectedStep();
-  if (applyToStep && freshStep) {
-    normalizeStepFrames(freshStep);
-    const newest = freshStep.frames[freshStep.frames.length - 1];
-    if (newest) state.selectedFrameId = newest.id;
-  }
-  renderEditor();
-  await renderStepEditor();
-  nodes.statusMessage.textContent = state.project.statusMessage || "Скриншот добавлен.";
 }
 
 document.querySelector("#upload-image").addEventListener("click", () => {
@@ -1075,9 +1170,9 @@ document.querySelector("#image-input").addEventListener("change", async (event) 
 });
 
 document.addEventListener("paste", handlePaste, true);
-window.addEventListener("paste", handlePaste, true);
 
 async function handlePaste(event) {
+  if (pasteHandled) return;
   if (!state.project || nodes.editor.classList.contains("hidden")) return;
   const active = document.activeElement;
   if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable)) {
@@ -1090,6 +1185,11 @@ async function handlePaste(event) {
     const file = item.getAsFile();
     if (!file) continue;
     event.preventDefault();
+    event.stopImmediatePropagation();
+    pasteHandled = true;
+    setTimeout(() => {
+      pasteHandled = false;
+    }, 400);
     try {
       nodes.statusMessage.textContent = "Вставка из буфера…";
       await uploadStepImage(file, { applyToStep: true, label: "буфер" });
@@ -1099,6 +1199,8 @@ async function handlePaste(event) {
     break;
   }
 }
+
+document.querySelector("#format-bold-red")?.addEventListener("click", applyBoldRedFormat);
 
 nodes.canvasWrap?.addEventListener("click", () => nodes.canvasWrap.focus());
 nodes.stepFramesStrip?.addEventListener("click", () => nodes.stepFramesStrip.focus());
@@ -1172,7 +1274,7 @@ function escapeHtml(value) {
 }
 
 function truncate(value, max) {
-  const text = String(value || "");
+  const text = plainTextFromHtml(value);
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
