@@ -358,12 +358,76 @@ button {
   overflow: auto;
 }
 
+.meta-grid-wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.meta-grid-wide .span-2 {
+  grid-column: span 2;
+}
+
+.step-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.color-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.color-toolbar,
+.color-palette {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.color-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+  padding: 0;
+  cursor: pointer;
+}
+
+.color-swatch.is-active {
+  box-shadow: 0 0 0 2px var(--blue);
+  transform: scale(1.08);
+}
+
+.color-row-palette {
+  padding: 8px 10px;
+  background: var(--soft);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
 #annotation-canvas {
   display: block;
   max-width: 100%;
   background: #fff;
   border-radius: 8px;
   cursor: crosshair;
+}
+
+#annotation-canvas.tool-select {
+  cursor: default;
 }
 
 .canvas-hint {
@@ -407,7 +471,12 @@ dialog menu {
   }
 
   .editor-grid,
-  .meta-grid {
+  .meta-grid,
+  .meta-grid-wide {
     grid-template-columns: 1fr;
+  }
+
+  .meta-grid-wide .span-2 {
+    grid-column: span 1;
   }
 }

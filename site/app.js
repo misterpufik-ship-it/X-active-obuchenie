@@ -1,4 +1,4 @@
-const materials = [
+const baseMaterials = [
   {
     id: "ozon-supply-fbo",
     topic: "Поставки Ozon",
@@ -521,6 +521,24 @@ const materials = [
   }
 ];
 
+let materials = [...baseMaterials];
+
+async function loadPublishedMaterials() {
+  try {
+    const response = await fetch(`./published-lessons.json?${Date.now()}`);
+    if (!response.ok) return;
+    const published = await response.json();
+    if (!Array.isArray(published)) return;
+    published.forEach((item) => {
+      if (item?.id && !materials.some((entry) => entry.id === item.id)) {
+        materials.push(item);
+      }
+    });
+  } catch {
+    /* published-lessons.json may be missing offline */
+  }
+}
+
 const synonyms = {
   "эцп": ["подпись", "цифровая подпись", "электронная подпись"],
   "токен": ["интеграция", "доступ", "получить токен"],
@@ -819,20 +837,28 @@ function setMode(mode) {
   }
 }
 
+const BUILDER_LOCAL_URL = "http://127.0.0.1:8765/";
+const BUILDER_ONLINE_URL = "https://posoolonono.beget.app/x-active-builder/";
+
+function isLocalHost() {
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
+function builderUrl() {
+  return isLocalHost() ? BUILDER_LOCAL_URL : BUILDER_ONLINE_URL;
+}
+
 function syncDevelopFrame() {
   const frame = document.querySelector("#develop-frame");
   const note = document.querySelector("#develop-note");
+  const link = document.querySelector("#develop-open-link");
   if (!frame) return;
-  const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
-  if (isLocal) {
-    frame.src = frame.dataset.localSrc || "http://127.0.0.1:8765/";
-    frame.classList.remove("hidden");
-    note?.classList.add("hidden");
-    return;
-  }
-  frame.removeAttribute("src");
-  frame.classList.add("hidden");
-  note?.classList.remove("hidden");
+
+  const url = builderUrl();
+  if (link) link.href = url;
+  frame.src = url;
+  frame.classList.remove("hidden");
+  note?.classList.add("hidden");
 }
 
 nodes.modeButtons.forEach((button) => {
@@ -911,7 +937,12 @@ function setSidebarCollapsed(collapsed) {
 nodes.sidebarToggle.addEventListener("click", () => setSidebarCollapsed(true));
 nodes.sidebarRestore.addEventListener("click", () => setSidebarCollapsed(false));
 
-renderShell();
-renderLesson();
-setView("guide");
-setMode("library");
+async function bootstrap() {
+  await loadPublishedMaterials();
+  renderShell();
+  renderLesson();
+  setView("guide");
+  setMode("library");
+}
+
+bootstrap();

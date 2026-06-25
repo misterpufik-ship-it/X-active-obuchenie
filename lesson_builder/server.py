@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
-from . import export, pipeline, storage
+from . import export, pipeline, publish, storage
 from .ffmpeg_util import find_binary
 
 ROOT = Path(__file__).resolve().parent
@@ -78,10 +78,42 @@ def api_update_project(project_id: str):
         return jsonify({"error": "Проект не найден"}), 404
 
     payload = request.get_json(silent=True) or {}
-    for key in ("title", "topic", "description", "role", "duration", "steps"):
+    for key in (
+        "title",
+        "topic",
+        "description",
+        "role",
+        "duration",
+        "videoNote",
+        "keywords",
+        "checklist",
+        "issues",
+        "steps",
+    ):
         if key in payload:
             current[key] = payload[key]
     return jsonify(storage.save_project(current))
+
+
+@app.post("/api/projects/<project_id>/save")
+def api_save_project(project_id: str):
+    try:
+        data = storage.load_project(project_id)
+    except FileNotFoundError:
+        return jsonify({"error": "Проект не найден"}), 404
+    return jsonify(storage.save_project(data))
+
+
+@app.post("/api/projects/<project_id>/publish")
+def api_publish_project(project_id: str):
+    try:
+        result = publish.publish_to_site(project_id)
+        return jsonify(result)
+    except FileNotFoundError:
+        return jsonify({"error": "Проект не найден"}), 404
+    except Exception as exc:  # noqa: BLE001
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.delete("/api/projects/<project_id>")

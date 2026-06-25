@@ -1,12 +1,33 @@
+const SITE_LOCAL_URL = "http://127.0.0.1:8000/site/";
+const SITE_ONLINE_URL = "https://nostradamus-1503.ru/obuchenie/";
+
+function appRoot() {
+  const path = window.location.pathname.replace(/\/$/, "") || "";
+  if (!path || path === "/") return "";
+  return path;
+}
+
+function appUrl(path) {
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  return `${appRoot()}${suffix}`;
+}
+
+function siteHomeUrl() {
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? SITE_LOCAL_URL
+    : SITE_ONLINE_URL;
+}
+
+function stepId() {
+  return `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
 const state = {
   projects: [],
   project: null,
   selectedStepId: null,
-  tool: "arrow",
-  drawing: false,
-  startPoint: null,
-  previewItem: null,
   pollTimer: null,
+  activeColor: "#1e88e5",
 };
 
 const nodes = {
@@ -17,28 +38,75 @@ const nodes = {
   projectTitle: document.querySelector("#project-title"),
   fieldTopic: document.querySelector("#field-topic"),
   fieldRole: document.querySelector("#field-role"),
+  fieldDuration: document.querySelector("#field-duration"),
   fieldDescription: document.querySelector("#field-description"),
+  fieldVideoNote: document.querySelector("#field-video-note"),
+  fieldKeywords: document.querySelector("#field-keywords"),
+  fieldChecklist: document.querySelector("#field-checklist"),
+  fieldIssues: document.querySelector("#field-issues"),
   projectStatus: document.querySelector("#project-status"),
   statusMessage: document.querySelector("#status-message"),
   stepsCount: document.querySelector("#steps-count"),
   stepsList: document.querySelector("#steps-list"),
   stepEditorTitle: document.querySelector("#step-editor-title"),
   stepTitle: document.querySelector("#step-title"),
+  stepWhy: document.querySelector("#step-why"),
   stepAction: document.querySelector("#step-action"),
   stepComment: document.querySelector("#step-comment"),
   stepResult: document.querySelector("#step-result"),
   frameSelect: document.querySelector("#frame-select"),
   canvas: document.querySelector("#annotation-canvas"),
+  colorToolbar: document.querySelector("#color-toolbar"),
+  colorPalette: document.querySelector("#color-palette"),
+  paletteRow: document.querySelector("#palette-row"),
   snippetDialog: document.querySelector("#snippet-dialog"),
   snippetOutput: document.querySelector("#snippet-output"),
 };
 
-const ctx = nodes.canvas.getContext("2d");
 let bgImage = null;
 let saveTimer = null;
+let canvasEditor = null;
+
+function initCanvasEditor() {
+  if (canvasEditor) return canvasEditor;
+  canvasEditor = createCanvasEditor(nodes.canvas, nodes.colorPalette, (annotations) => {
+    const step = selectedStep();
+    if (!step) return;
+    step.annotations = annotations;
+    updatePaletteVisibility();
+    scheduleSaveStep();
+  });
+  canvasEditor.setColor(state.activeColor);
+  return canvasEditor;
+}
+
+function updatePaletteVisibility() {
+  const hasSelection = Boolean(canvasEditor?.getSelectedId?.());
+  nodes.paletteRow.classList.toggle("hidden", !hasSelection);
+  if (hasSelection) {
+    canvasEditor.redraw(bgImage);
+  }
+}
+
+function renderColorToolbar() {
+  const colors = window.RAINBOW_COLORS || [];
+  nodes.colorToolbar.innerHTML = colors
+    .map(
+      (color) =>
+        `<button type="button" class="color-swatch${state.activeColor === color ? " is-active" : ""}" data-color="${color}" style="background:${color}" title="${color}"></button>`
+    )
+    .join("");
+  nodes.colorToolbar.querySelectorAll(".color-swatch").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeColor = button.dataset.color;
+      canvasEditor?.setColor(state.activeColor);
+      renderColorToolbar();
+    });
+  });
+}
 
 async function api(path, options = {}) {
-  const response = await fetch(path, options);
+  const response = await fetch(appUrl(path), options);
   if (!response.ok) {
     let message = "Ошибка запроса";
     try {
@@ -60,7 +128,7 @@ function selectedStep() {
 }
 
 function fileUrl(relPath) {
-  return `/api/projects/${state.project.id}/files/${relPath}?t=${Date.now()}`;
+  return appUrl(`/api/projects/${state.project.id}/files/${relPath}?t=${Date.now()}`);
 }
 
 function scheduleSaveProject() {
@@ -71,6 +139,39 @@ function scheduleSaveProject() {
 function scheduleSaveStep() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveStepFields, 400);
+}
+
+function linesToList(value) {
+  return String(value || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function listToLines(value) {
+  return (value || []).join("\n");
+}
+
+function issuesToLines(issues) {
+  return (issues || [])
+    .map((item) => {
+      if (typeof item === "string") return item;
+      return `${item.title || ""} | ${item.text || ""}`.trim();
+    })
+    .join("\n");
+}
+
+function linesToIssues(value) {
+  return linesToList(value).map((line) => {
+    const [title, ...rest] = line.split("|");
+    return { title: title.trim(), text: rest.join("|").trim() };
+  });
+}
+
+function renumberSteps() {
+  (state.project.steps || []).forEach((step, index) => {
+    step.number = index + 1;
+  });
 }
 
 async function loadProjects() {
@@ -101,6 +202,7 @@ function renderProjectList() {
 
 async function openProject(projectId) {
   stopPolling();
+  await flushPendingSave();
   state.project = await api(`/api/projects/${projectId}`);
   state.selectedStepId = state.project.steps?.[0]?.id || null;
   nodes.emptyState.classList.add("hidden");
@@ -116,7 +218,12 @@ function renderEditor() {
   nodes.projectTitle.value = project.title || "";
   nodes.fieldTopic.value = project.topic || "";
   nodes.fieldRole.value = project.role || "";
+  nodes.fieldDuration.value = project.duration || "";
   nodes.fieldDescription.value = project.description || "";
+  nodes.fieldVideoNote.value = project.videoNote || "";
+  nodes.fieldKeywords.value = (project.keywords || []).join(", ");
+  nodes.fieldChecklist.value = listToLines(project.checklist);
+  nodes.fieldIssues.value = issuesToLines(project.issues);
   nodes.projectStatus.textContent = project.status || "draft";
   nodes.statusMessage.textContent = project.statusMessage || "";
   nodes.stepsCount.textContent = String(project.steps?.length || 0);
@@ -129,7 +236,7 @@ function renderEditor() {
 function renderStepsList() {
   const steps = state.project.steps || [];
   if (!steps.length) {
-    nodes.stepsList.innerHTML = `<p class="status-text">Шаги появятся после обработки видео.</p>`;
+    nodes.stepsList.innerHTML = `<p class="status-text">Добавьте шаг вручную или запустите обработку видео.</p>`;
     return;
   }
 
@@ -145,7 +252,7 @@ function renderStepsList() {
 
   nodes.stepsList.querySelectorAll(".step-card-btn").forEach((button) => {
     button.addEventListener("click", async () => {
-      await persistStepFields();
+      await flushPendingSave();
       state.selectedStepId = button.dataset.step;
       renderStepEditor();
       renderStepsList();
@@ -155,21 +262,30 @@ function renderStepsList() {
 
 function renderFrameSelect() {
   const frames = state.project.availableFrames || [];
+  if (!frames.length) {
+    nodes.frameSelect.innerHTML = `<option value="">Нет кадров</option>`;
+    return;
+  }
   nodes.frameSelect.innerHTML = frames
     .map((frame) => `<option value="${frame.file}">${frame.time}s — ${frame.file.split("/").pop()}</option>`)
     .join("");
 }
 
 async function renderStepEditor() {
+  const editor = initCanvasEditor();
   const step = selectedStep();
   if (!step) {
     nodes.stepEditorTitle.textContent = "Шаг не выбран";
-    ctx.clearRect(0, 0, nodes.canvas.width, nodes.canvas.height);
+    bgImage = null;
+    window.__canvasBgImage = null;
+    editor.setAnnotations([]);
+    editor.redraw(null);
     return;
   }
 
   nodes.stepEditorTitle.textContent = `Шаг ${step.number}`;
   nodes.stepTitle.value = step.title || "";
+  nodes.stepWhy.value = step.why || "";
   nodes.stepAction.value = step.action || "";
   nodes.stepComment.value = step.comment || "";
   nodes.stepResult.value = step.result || "";
@@ -179,10 +295,14 @@ async function renderStepEditor() {
   }
 
   await loadCanvasImage(step);
-  redrawCanvas();
+  window.__canvasBgImage = bgImage;
+  editor.setAnnotations(step.annotations || []);
+  editor.redraw(bgImage);
+  updatePaletteVisibility();
 }
 
 async function loadCanvasImage(step) {
+  const ctx = nodes.canvas.getContext("2d");
   if (!step.frameFile) {
     bgImage = null;
     nodes.canvas.width = 960;
@@ -191,7 +311,7 @@ async function loadCanvasImage(step) {
     ctx.fillRect(0, 0, nodes.canvas.width, nodes.canvas.height);
     ctx.fillStyle = "#65717f";
     ctx.font = "18px Segoe UI";
-    ctx.fillText("Скриншот не назначен", 36, 48);
+    ctx.fillText("Скриншот не назначен — выберите кадр или загрузите видео", 36, 48);
     return;
   }
 
@@ -208,223 +328,177 @@ async function loadCanvasImage(step) {
   });
 }
 
-function redrawCanvas() {
-  const step = selectedStep();
-  ctx.clearRect(0, 0, nodes.canvas.width, nodes.canvas.height);
-  if (bgImage) ctx.drawImage(bgImage, 0, 0);
-
-  (step?.annotations || []).forEach((item) => drawAnnotation(item));
-  if (state.previewItem) drawAnnotation(state.previewItem, true);
-}
-
-function drawAnnotation(item, preview = false) {
-  ctx.save();
-  ctx.strokeStyle = item.color || "#0076ff";
-  ctx.fillStyle = item.color || "#0076ff";
-  ctx.lineWidth = item.stroke || 4;
-  if (preview) ctx.setLineDash([8, 6]);
-
-  if (item.type === "rect") {
-    ctx.strokeRect(item.x, item.y, item.w, item.h);
-  } else if (item.type === "circle") {
-    ctx.beginPath();
-    ctx.arc(item.cx, item.cy, item.r, 0, Math.PI * 2);
-    ctx.stroke();
-  } else if (item.type === "arrow") {
-    drawArrow(item.x1, item.y1, item.x2, item.y2);
-  } else if (item.type === "text") {
-    ctx.font = `700 ${item.size || 22}px Segoe UI`;
-    const text = item.text || "";
-    const metrics = ctx.measureText(text);
-    const pad = 8;
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.fillRect(item.x - pad, item.y - pad, metrics.width + pad * 2, 28 + pad);
-    ctx.strokeStyle = item.color || "#0076ff";
-    ctx.strokeRect(item.x - pad, item.y - pad, metrics.width + pad * 2, 28 + pad);
-    ctx.fillStyle = "#17202a";
-    ctx.fillText(text, item.x, item.y + 20);
-  }
-  ctx.restore();
-}
-
-function drawArrow(x1, y1, x2, y2) {
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-  const angle = Math.atan2(y2 - y1, x2 - x1);
-  const head = 16;
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - head * Math.cos(angle - 0.45), y2 - head * Math.sin(angle - 0.45));
-  ctx.lineTo(x2 - head * Math.cos(angle + 0.45), y2 - head * Math.sin(angle + 0.45));
-  ctx.closePath();
-  ctx.fill();
-}
-
-function canvasPoint(event) {
-  const rect = nodes.canvas.getBoundingClientRect();
-  const scaleX = nodes.canvas.width / rect.width;
-  const scaleY = nodes.canvas.height / rect.height;
+function collectProjectPayload() {
   return {
-    x: (event.clientX - rect.left) * scaleX,
-    y: (event.clientY - rect.top) * scaleY,
+    title: nodes.projectTitle.value.trim(),
+    topic: nodes.fieldTopic.value.trim(),
+    role: nodes.fieldRole.value.trim(),
+    duration: nodes.fieldDuration.value.trim(),
+    description: nodes.fieldDescription.value.trim(),
+    videoNote: nodes.fieldVideoNote.value.trim(),
+    keywords: nodes.fieldKeywords.value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    checklist: linesToList(nodes.fieldChecklist.value),
+    issues: linesToIssues(nodes.fieldIssues.value),
+    steps: state.project.steps,
   };
 }
 
-nodes.canvas.addEventListener("mousedown", (event) => {
+function syncStepFromForm() {
   const step = selectedStep();
-  if (!step || !bgImage) return;
-  const point = canvasPoint(event);
+  if (!step) return;
+  step.title = nodes.stepTitle.value.trim();
+  step.why = nodes.stepWhy.value.trim();
+  step.action = nodes.stepAction.value.trim();
+  step.comment = nodes.stepComment.value.trim();
+  step.result = nodes.stepResult.value.trim();
+}
 
-  if (state.tool === "text") {
-    const text = prompt("Текст пометки:", "Нажать");
-    if (!text) return;
-    step.annotations.push({ type: "text", x: point.x, y: point.y, text, color: "#0076ff", size: 22 });
-    persistStepFields();
-    redrawCanvas();
-    return;
-  }
+async function flushPendingSave() {
+  clearTimeout(saveTimer);
+  if (!state.project) return;
+  syncStepFromForm();
+  const payload = collectProjectPayload();
+  Object.assign(state.project, payload);
+  state.project = await api(`/api/projects/${state.project.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
 
-  if (state.tool === "select") return;
+async function saveProjectMeta() {
+  if (!state.project) return;
+  syncStepFromForm();
+  const payload = collectProjectPayload();
+  Object.assign(state.project, payload);
+  state.project = await api(`/api/projects/${state.project.id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  renderProjectList();
+  nodes.statusMessage.textContent = "Сохранено.";
+}
 
-  state.drawing = true;
-  state.startPoint = point;
-  state.previewItem = null;
-});
-
-nodes.canvas.addEventListener("mousemove", (event) => {
-  if (!state.drawing || !state.startPoint) return;
-  const point = canvasPoint(event);
-  const start = state.startPoint;
-
-  if (state.tool === "arrow") {
-    state.previewItem = { type: "arrow", x1: start.x, y1: start.y, x2: point.x, y2: point.y, color: "#0076ff", stroke: 4 };
-  } else if (state.tool === "rect") {
-    state.previewItem = {
-      type: "rect",
-      x: Math.min(start.x, point.x),
-      y: Math.min(start.y, point.y),
-      w: Math.abs(point.x - start.x),
-      h: Math.abs(point.y - start.y),
-      color: "#0076ff",
-      stroke: 4,
-    };
-  } else if (state.tool === "circle") {
-    const radius = Math.hypot(point.x - start.x, point.y - start.y);
-    state.previewItem = { type: "circle", cx: start.x, cy: start.y, r: radius, color: "#0076ff", stroke: 4 };
-  }
-  redrawCanvas();
-});
-
-nodes.canvas.addEventListener("mouseup", (event) => {
-  const step = selectedStep();
-  if (!state.drawing || !step || !state.startPoint) return;
-  const point = canvasPoint(event);
-  const start = state.startPoint;
-  state.drawing = false;
-  state.startPoint = null;
-
-  if (state.tool === "arrow" && (Math.abs(point.x - start.x) > 8 || Math.abs(point.y - start.y) > 8)) {
-    step.annotations.push({ type: "arrow", x1: start.x, y1: start.y, x2: point.x, y2: point.y, color: "#0076ff", stroke: 4 });
-  } else if (state.tool === "rect" && (Math.abs(point.x - start.x) > 8 || Math.abs(point.y - start.y) > 8)) {
-    step.annotations.push({
-      type: "rect",
-      x: Math.min(start.x, point.x),
-      y: Math.min(start.y, point.y),
-      w: Math.abs(point.x - start.x),
-      h: Math.abs(point.y - start.y),
-      color: "#0076ff",
-      stroke: 4,
-    });
-  } else if (state.tool === "circle" && Math.hypot(point.x - start.x, point.y - start.y) > 8) {
-    step.annotations.push({
-      type: "circle",
-      cx: start.x,
-      cy: start.y,
-      r: Math.hypot(point.x - start.x, point.y - start.y),
-      color: "#0076ff",
-      stroke: 4,
-    });
-  }
-
-  state.previewItem = null;
-  persistStepFields();
-  redrawCanvas();
-});
+async function saveStepFields() {
+  await saveProjectMeta();
+  renderStepsList();
+}
 
 document.querySelectorAll(".tool-btn").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".tool-btn").forEach((item) => item.classList.remove("is-active"));
     button.classList.add("is-active");
-    state.tool = button.dataset.tool;
+    const tool = button.dataset.tool;
+    initCanvasEditor().setTool(tool);
+    nodes.canvas.classList.toggle("tool-select", tool === "select");
+    updatePaletteVisibility();
   });
 });
 
 document.querySelector("#undo-annotation").addEventListener("click", () => {
-  const step = selectedStep();
-  if (!step?.annotations?.length) return;
-  step.annotations.pop();
-  persistStepFields();
-  redrawCanvas();
+  initCanvasEditor().undo();
 });
 
 document.querySelector("#clear-annotations").addEventListener("click", () => {
-  const step = selectedStep();
-  if (!step) return;
   if (!confirm("Очистить все пометки на этом шаге?")) return;
-  step.annotations = [];
-  persistStepFields();
-  redrawCanvas();
+  initCanvasEditor().clearAll();
 });
 
-async function saveProjectMeta() {
-  if (!state.project) return;
-  state.project.title = nodes.projectTitle.value.trim();
-  state.project.topic = nodes.fieldTopic.value.trim();
-  state.project.role = nodes.fieldRole.value.trim();
-  state.project.description = nodes.fieldDescription.value.trim();
-  state.project = await api(`/api/projects/${state.project.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      title: state.project.title,
-      topic: state.project.topic,
-      role: state.project.role,
-      description: state.project.description,
-    }),
-  });
-  renderProjectList();
-}
+document.querySelector("#delete-annotation").addEventListener("click", () => {
+  initCanvasEditor().deleteSelected();
+  updatePaletteVisibility();
+});
 
-async function persistStepFields() {
-  if (!state.project) return;
-  const step = selectedStep();
-  if (step) {
-    step.title = nodes.stepTitle.value.trim();
-    step.action = nodes.stepAction.value.trim();
-    step.comment = nodes.stepComment.value.trim();
-    step.result = nodes.stepResult.value.trim();
-  }
-  state.project = await api(`/api/projects/${state.project.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ steps: state.project.steps }),
-  });
-  renderStepsList();
-}
-
-async function saveStepFields() {
-  await persistStepFields();
-}
-
-[nodes.projectTitle, nodes.fieldTopic, nodes.fieldRole, nodes.fieldDescription].forEach((node) => {
+[nodes.projectTitle, nodes.fieldTopic, nodes.fieldRole, nodes.fieldDuration, nodes.fieldDescription, nodes.fieldVideoNote, nodes.fieldKeywords, nodes.fieldChecklist, nodes.fieldIssues].forEach((node) => {
   node.addEventListener("input", scheduleSaveProject);
 });
 
-[nodes.stepTitle, nodes.stepAction, nodes.stepComment, nodes.stepResult].forEach((node) => {
+[nodes.stepTitle, nodes.stepWhy, nodes.stepAction, nodes.stepComment, nodes.stepResult].forEach((node) => {
   node.addEventListener("input", scheduleSaveStep);
 });
+
+document.querySelector("#save-project").addEventListener("click", async () => {
+  try {
+    await flushPendingSave();
+    nodes.statusMessage.textContent = "Проект сохранён.";
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+document.querySelector("#publish-project").addEventListener("click", async () => {
+  if (!state.project) return;
+  if (!confirm("Добавить урок в учебную базу site/? После этого задеплойте сайт на хостинг.")) return;
+  try {
+    await flushPendingSave();
+    const result = await api(`/api/projects/${state.project.id}/publish`, { method: "POST" });
+    state.project = await api(`/api/projects/${state.project.id}`);
+    renderEditor();
+    alert(`Урок добавлен в учебную базу.\nID: ${result.materialId}\nШагов: ${result.steps}\n\nЗадеплойте сайт, чтобы увидеть на хостинге.`);
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+document.querySelector("#add-step").addEventListener("click", async () => {
+  if (!state.project) return;
+  await flushPendingSave();
+  const number = (state.project.steps?.length || 0) + 1;
+  const step = {
+    id: stepId(),
+    number,
+    title: `Шаг ${number}`,
+    why: "",
+    action: "",
+    comment: "",
+    result: "",
+    frameFile: state.project.availableFrames?.[0]?.file || "",
+    annotations: [],
+  };
+  state.project.steps = [...(state.project.steps || []), step];
+  renumberSteps();
+  state.selectedStepId = step.id;
+  await saveProjectMeta();
+  renderEditor();
+});
+
+document.querySelector("#delete-step").addEventListener("click", async () => {
+  const step = selectedStep();
+  if (!step || !confirm(`Удалить шаг ${step.number}?`)) return;
+  await flushPendingSave();
+  state.project.steps = state.project.steps.filter((item) => item.id !== step.id);
+  renumberSteps();
+  state.selectedStepId = state.project.steps[0]?.id || null;
+  await saveProjectMeta();
+  renderEditor();
+});
+
+document.querySelector("#move-step-up").addEventListener("click", async () => {
+  await moveStep(-1);
+});
+
+document.querySelector("#move-step-down").addEventListener("click", async () => {
+  await moveStep(1);
+});
+
+async function moveStep(direction) {
+  const steps = state.project?.steps || [];
+  const index = steps.findIndex((step) => step.id === state.selectedStepId);
+  if (index < 0) return;
+  const target = index + direction;
+  if (target < 0 || target >= steps.length) return;
+  await flushPendingSave();
+  const copy = [...steps];
+  [copy[index], copy[target]] = [copy[target], copy[index]];
+  state.project.steps = copy;
+  renumberSteps();
+  await saveProjectMeta();
+  renderEditor();
+}
 
 document.querySelector("#new-project").addEventListener("click", async () => {
   const title = prompt("Название урока:", "Новый урок");
@@ -448,7 +522,7 @@ document.querySelector("#upload-video").addEventListener("click", async () => {
   }
   const form = new FormData();
   form.append("video", file);
-  const response = await fetch(`/api/projects/${state.project.id}/upload`, { method: "POST", body: form });
+  const response = await fetch(appUrl(`/api/projects/${state.project.id}/upload`), { method: "POST", body: form });
   if (!response.ok) {
     const payload = await response.json();
     alert(payload.error || "Не удалось загрузить видео.");
@@ -461,6 +535,7 @@ document.querySelector("#upload-video").addEventListener("click", async () => {
 document.querySelector("#process-video").addEventListener("click", async () => {
   if (!state.project) return;
   try {
+    await flushPendingSave();
     await api(`/api/projects/${state.project.id}/process`, { method: "POST" });
     state.project.status = "processing";
     renderEditor();
@@ -473,9 +548,13 @@ document.querySelector("#process-video").addEventListener("click", async () => {
 document.querySelector("#apply-frame").addEventListener("click", async () => {
   const step = selectedStep();
   if (!step) return;
-  step.frameFile = nodes.frameSelect.value;
-  step.annotations = [];
-  await persistStepFields();
+  const frame = nodes.frameSelect.value;
+  if (!frame) {
+    alert("Нет доступных кадров.");
+    return;
+  }
+  step.frameFile = frame;
+  await saveStepFields();
   await renderStepEditor();
 });
 
@@ -521,7 +600,7 @@ function startPolling() {
     renderEditor();
     if (wasProcessing && fresh.status !== "processing") {
       stopPolling();
-      if (fresh.status === "ready" && fresh.steps?.length) {
+      if (fresh.steps?.length) {
         state.selectedStepId = fresh.steps[0].id;
         await renderStepEditor();
       }
@@ -547,4 +626,13 @@ function truncate(value, max) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+nodes.canvas.addEventListener("mouseup", () => {
+  setTimeout(updatePaletteVisibility, 0);
+});
+
+renderColorToolbar();
+initCanvasEditor();
 loadProjects();
+
+const siteHomeLink = document.querySelector("#site-home-link");
+if (siteHomeLink) siteHomeLink.href = siteHomeUrl();

@@ -69,7 +69,27 @@ def render_annotated_image(project_id: str, step: dict[str, Any]) -> Path:
         elif item_type == "text":
             text = item.get("text", "")
             font = _font(int(item.get("size", 22)), bold=True)
-            tx, ty = item["x"], item["y"]
+            tx = item.get("tx", item.get("x", 0))
+            ty = item.get("ty", item.get("y", 0))
+            bbox = draw.textbbox((tx, ty), text, font=font)
+            pad = 8
+            draw.rounded_rectangle(
+                (bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad),
+                radius=6,
+                fill=(255, 255, 255, 235),
+                outline=color,
+                width=2,
+            )
+            draw.text((tx, ty), text, fill=(17, 24, 39, 255), font=font)
+        elif item_type == "callout":
+            text = item.get("text", "")
+            font = _font(int(item.get("size", 22)), bold=True)
+            tx = item.get("tx", 0)
+            ty = item.get("ty", 0)
+            ax = item.get("ax", tx)
+            ay = item.get("ay", ty)
+            draw.line((tx, ty + 12, ax, ay), fill=color, width=stroke)
+            draw.ellipse((ax - 6, ay - 6, ax + 6, ay + 6), fill=color)
             bbox = draw.textbbox((tx, ty), text, font=font)
             pad = 8
             draw.rounded_rectangle(

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Разработка урока — X-active</title>
-    <link rel="stylesheet" href="/static/builder.css" />
+    <link rel="stylesheet" href="static/builder.css" />
   </head>
   <body>
     <div class="app">
@@ -17,7 +17,7 @@
           </div>
         </div>
 
-        <a class="back-link" href="http://127.0.0.1:8000/" target="_blank" rel="noreferrer">← Учебный центр</a>
+        <a class="back-link" id="site-home-link" href="https://nostradamus-1503.ru/obuchenie/" target="_blank" rel="noreferrer">← Учебный центр</a>
 
         <button class="primary-btn" id="new-project" type="button">+ Новый проект</button>
 
@@ -28,14 +28,14 @@
 
         <div class="hint-card">
           <strong>Как работает</strong>
-          <p>Загрузите видео → получите шаги и скриншоты → отметьте экран → экспортируйте HTML или PDF.</p>
+          <p>Заполните поля на любом этапе → отметьте экран → «Сохранить» → «Добавить в учебную базу».</p>
         </div>
       </aside>
 
       <main class="workspace" id="workspace">
         <section class="empty-state" id="empty-state">
           <h2>Выберите или создайте проект</h2>
-          <p>Инструмент работает локально. Все файлы сохраняются в папке <code>lesson_builder/projects</code>.</p>
+          <p>Выберите проект слева или создайте новый. Проекты сохраняются на сервере конструктора.</p>
         </section>
 
         <section class="editor hidden" id="editor">
@@ -45,16 +45,23 @@
               <input class="title-input" id="project-title" type="text" placeholder="Название урока" />
             </div>
             <div class="header-actions">
+              <button class="secondary-btn" id="save-project" type="button">Сохранить</button>
+              <button class="primary-btn" id="publish-project" type="button">Добавить в учебную базу</button>
               <button class="ghost-btn" id="export-html" type="button">HTML</button>
               <button class="ghost-btn" id="export-pdf" type="button">PDF</button>
-              <button class="ghost-btn" id="export-snippet" type="button">Фрагмент для app.js</button>
+              <button class="ghost-btn" id="export-snippet" type="button">Фрагмент</button>
             </div>
           </header>
 
-          <div class="meta-grid">
+          <div class="meta-grid meta-grid-wide">
             <label>Тема<input id="field-topic" type="text" /></label>
             <label>Роль<input id="field-role" type="text" /></label>
-            <label>Описание<textarea id="field-description" rows="2"></textarea></label>
+            <label>Длительность<input id="field-duration" type="text" placeholder="15-20 минут" /></label>
+            <label class="span-2">Описание<textarea id="field-description" rows="2"></textarea></label>
+            <label class="span-2">Примечание к видео<textarea id="field-video-note" rows="2"></textarea></label>
+            <label class="span-2">Ключевые слова (через запятую)<input id="field-keywords" type="text" /></label>
+            <label class="span-2">Чеклист (по строке)<textarea id="field-checklist" rows="3"></textarea></label>
+            <label class="span-2">Типичные ошибки (заголовок | текст, по строке)<textarea id="field-issues" rows="3"></textarea></label>
           </div>
 
           <section class="panel upload-panel">
@@ -76,6 +83,12 @@
                 <h2>2. Шаги</h2>
                 <span id="steps-count">0</span>
               </div>
+              <div class="step-controls">
+                <button class="ghost-btn" id="add-step" type="button">+ Шаг</button>
+                <button class="ghost-btn" id="delete-step" type="button">Удалить</button>
+                <button class="ghost-btn" id="move-step-up" type="button">↑</button>
+                <button class="ghost-btn" id="move-step-down" type="button">↓</button>
+              </div>
               <div class="steps-list" id="steps-list"></div>
             </section>
 
@@ -83,18 +96,30 @@
               <div class="panel-head">
                 <h2 id="step-editor-title">Шаг</h2>
                 <div class="toolbar">
-                  <button class="tool-btn" data-tool="select" type="button">Выбор</button>
-                  <button class="tool-btn is-active" data-tool="arrow" type="button">Стрелка</button>
+                  <button class="tool-btn is-active" data-tool="select" type="button">Выбор</button>
+                  <button class="tool-btn" data-tool="arrow" type="button">Стрелка</button>
                   <button class="tool-btn" data-tool="rect" type="button">Рамка</button>
                   <button class="tool-btn" data-tool="circle" type="button">Круг</button>
                   <button class="tool-btn" data-tool="text" type="button">Текст</button>
+                  <button class="tool-btn" data-tool="callout" type="button">Сноска</button>
+                  <button class="ghost-btn" id="delete-annotation" type="button">Удалить элемент</button>
                   <button class="ghost-btn" id="undo-annotation" type="button">Отмена</button>
                   <button class="ghost-btn" id="clear-annotations" type="button">Очистить</button>
                 </div>
               </div>
 
+              <div class="color-row">
+                <span class="color-label">Цвет:</span>
+                <div class="color-toolbar" id="color-toolbar"></div>
+              </div>
+              <div class="color-row color-row-palette hidden" id="palette-row">
+                <span class="color-label">Цвет элемента:</span>
+                <div class="color-palette" id="color-palette"></div>
+              </div>
+
               <div class="step-fields">
                 <label>Заголовок<input id="step-title" type="text" /></label>
+                <label>Зачем этот шаг<textarea id="step-why" rows="2"></textarea></label>
                 <label>Действие<textarea id="step-action" rows="3"></textarea></label>
                 <label>Комментарий<textarea id="step-comment" rows="2"></textarea></label>
                 <label>Готово, если<textarea id="step-result" rows="2"></textarea></label>
@@ -110,7 +135,7 @@
               <div class="canvas-wrap">
                 <canvas id="annotation-canvas"></canvas>
               </div>
-              <p class="canvas-hint">Кликните и потяните мышью, чтобы нарисовать стрелку, рамку или круг. Для текста — один клик.</p>
+              <p class="canvas-hint">Выбор — перемещение и растягивание. Сноска — клик на текст, потяните к нужной точке. Delete — удалить выбранный элемент.</p>
             </section>
           </div>
         </section>
@@ -129,6 +154,7 @@
       </form>
     </dialog>
 
-    <script src="/static/builder.js"></script>
+    <script src="static/canvas-editor.js"></script>
+    <script src="static/builder.js"></script>
   </body>
 </html>
