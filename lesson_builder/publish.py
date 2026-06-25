@@ -90,6 +90,7 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
 
     material = {
         "id": material_id,
+        "builderProjectId": project_id,
         "topic": data.get("topic", "Без темы"),
         "title": data.get("title", "Новый урок"),
         "description": data.get("description", ""),
@@ -125,3 +126,51 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
         "deployed": deploy_result.get("deployed", False),
         "message": status_message,
     }
+
+
+def update_published_lesson(material_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    items = _load_published()
+    index = next((i for i, item in enumerate(items) if item.get("id") == material_id), None)
+    if index is None:
+        raise FileNotFoundError(f"Урок не найден: {material_id}")
+
+    current = items[index]
+    for key in ("topic", "title", "description", "role", "duration", "videoNote", "keywords", "steps", "checklist", "issues"):
+        if key in payload:
+            current[key] = payload[key]
+    items[index] = current
+    _save_published(items)
+
+    project_id = current.get("builderProjectId")
+    if project_id:
+        try:
+            _sync_material_to_builder(project_id, current)
+        except FileNotFoundError:
+            pass
+
+    deploy_result = auto_deploy(material_id, ["published-lessons.json"])
+    return {
+        "ok": True,
+        "deployed": deploy_result.get("deployed", False),
+        "message": deploy_result.get("message") or "Урок сохранён.",
+    }
+
+
+def _sync_material_to_builder(project_id: str, material: dict[str, Any]) -> None:
+    data = storage.load_project(project_id)
+    data["title"] = material.get("title", data.get("title", ""))
+    data["topic"] = material.get("topic", data.get("topic", ""))
+    data["description"] = material.get("description", data.get("description", ""))
+
+    builder_steps = data.get("steps") or []
+    for index, mat_step in enumerate(material.get("steps") or []):
+        if index >= len(builder_steps):
+            break
+        builder_steps[index]["title"] = mat_step.get("title", builder_steps[index].get("title", ""))
+        builder_steps[index]["why"] = mat_step.get("why", builder_steps[index].get("why", ""))
+        builder_steps[index]["action"] = mat_step.get("action", builder_steps[index].get("action", ""))
+        builder_steps[index]["result"] = mat_step.get("result", builder_steps[index].get("result", ""))
+        caption = mat_step.get("caption") or mat_step.get("comment") or ""
+        builder_steps[index]["comment"] = caption
+
+    storage.save_project(data)

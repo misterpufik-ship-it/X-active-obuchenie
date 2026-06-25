@@ -20,6 +20,53 @@ STATIC = ROOT / "static"
 app = Flask(__name__, static_folder=str(STATIC), static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024  # 1 GB
 
+_CORS_ORIGINS = (
+    "https://nostradamus-1503.ru",
+    "http://nostradamus-1503.ru",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8765",
+    "http://localhost:8765",
+)
+
+
+@app.after_request
+def _cors_headers(response):
+    origin = request.headers.get("Origin", "")
+    if origin in _CORS_ORIGINS or origin.endswith(".beget.app"):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.route("/api/published-lessons", methods=["OPTIONS"])
+def api_published_options_list():
+    return ("", 204)
+
+
+@app.route("/api/published-lessons/<material_id>", methods=["OPTIONS"])
+def api_published_options_item(material_id: str):
+    return ("", 204)
+
+
+@app.get("/api/published-lessons")
+def api_list_published_lessons():
+    return jsonify(publish._load_published())
+
+
+@app.put("/api/published-lessons/<material_id>")
+def api_update_published_lesson(material_id: str):
+    payload = request.get_json(silent=True) or {}
+    try:
+        result = publish.update_published_lesson(material_id, payload)
+        return jsonify(result)
+    except FileNotFoundError:
+        return jsonify({"error": "Урок не найден в published-lessons.json"}), 404
+    except Exception as exc:  # noqa: BLE001
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
+
 
 @app.get("/")
 def index():

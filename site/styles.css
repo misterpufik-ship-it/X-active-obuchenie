@@ -512,9 +512,48 @@ button {
 
 .lesson-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 250px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   gap: 18px;
   align-items: start;
+}
+
+.lesson-header-side {
+  display: grid;
+  gap: 10px;
+}
+
+.lesson-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lesson-actions .secondary-btn,
+.lesson-actions .primary-btn,
+.lesson-actions .ghost-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lesson-actions .secondary-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--blue-dark);
+}
+
+.lesson-actions .primary-btn {
+  border: 0;
+  background: var(--blue);
+  color: #fff;
+}
+
+.lesson-actions .ghost-btn {
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: #344054;
 }
 
 .lesson-header h2 {
@@ -524,6 +563,30 @@ button {
 
 .lesson-header p {
   margin-bottom: 0;
+}
+
+.editable-field {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.editable-field.is-editing {
+  outline: 2px solid rgba(33, 162, 179, 0.45);
+  outline-offset: 3px;
+  border-radius: 6px;
+  cursor: text;
+}
+
+.instruction-grid p,
+#lesson-title,
+#lesson-description,
+#step-title,
+.step-toolbar h3,
+.material-card strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .lesson-meta {
@@ -711,7 +774,10 @@ button {
 .instruction-grid p {
   margin: 6px 0 0;
   color: #344054;
-  line-height: 1.5;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .complete-toggle {

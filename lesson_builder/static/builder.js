@@ -941,7 +941,13 @@ document.addEventListener("keydown", (event) => {
 
 renderColorToolbar();
 initCanvasEditor();
-loadProjects();
+loadProjects().then(async () => {
+  const params = new URLSearchParams(window.location.search);
+  const projectId = params.get("project");
+  if (projectId) {
+    await openProject(projectId);
+  }
+});
 
 const siteHomeLink = document.querySelector("#site-home-link");
 if (siteHomeLink) siteHomeLink.href = siteHomeUrl();

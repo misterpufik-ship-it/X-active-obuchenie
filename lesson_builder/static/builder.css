@@ -324,13 +324,17 @@ button {
 .meta-grid textarea,
 .step-fields input,
 .step-fields textarea,
-.frame-picker select {
+.frame-picker select,
+.title-input {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px 12px;
   color: var(--ink);
   background: #fff;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .panel {

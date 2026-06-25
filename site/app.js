@@ -522,6 +522,7 @@ const baseMaterials = [
 ];
 
 let materials = [...baseMaterials];
+const publishedEditableIds = new Set();
 
 async function loadPublishedMaterials() {
   try {
@@ -530,7 +531,12 @@ async function loadPublishedMaterials() {
     const published = await response.json();
     if (!Array.isArray(published)) return;
     published.forEach((item) => {
-      if (item?.id && !materials.some((entry) => entry.id === item.id)) {
+      if (!item?.id) return;
+      publishedEditableIds.add(item.id);
+      const index = materials.findIndex((entry) => entry.id === item.id);
+      if (index >= 0) {
+        materials[index] = item;
+      } else {
         materials.push(item);
       }
     });
@@ -560,7 +566,8 @@ const state = {
   currentIssue: 0,
   query: "",
   completed: {},
-  mode: "library"
+  mode: "library",
+  editMode: false
 };
 
 const nodes = {
@@ -611,8 +618,21 @@ const nodes = {
   developLayout: document.querySelector("#develop-layout"),
   modeButtons: document.querySelectorAll(".mode-btn"),
   railLibrary: document.querySelector("#rail-library"),
-  railTop: document.querySelector(".rail-top")
+  railTop: document.querySelector(".rail-top"),
+  editLesson: document.querySelector("#edit-lesson"),
+  saveLesson: document.querySelector("#save-lesson"),
+  openBuilder: document.querySelector("#open-builder")
 };
+
+const editableLessonFields = () => [
+  nodes.lessonTopic,
+  nodes.lessonTitle,
+  nodes.lessonDescription,
+  nodes.stepTitle,
+  nodes.stepWhy,
+  nodes.stepAction,
+  nodes.stepResult
+];
 
 function normalize(value) {
   return value.toLowerCase().replaceAll("ё", "е").trim();
@@ -812,6 +832,8 @@ function renderLesson() {
   nodes.videoNote.textContent = material.videoNote;
   nodes.videoLink.href = material.sourceVideo;
   syncVideoSource();
+  setLessonEditMode(state.editMode);
+  updateLessonActionButtons(material);
 }
 
 function syncVideoSource() {
@@ -840,12 +862,19 @@ function renderShell() {
 }
 
 function setStep(index) {
+  if (state.editMode) {
+    readLessonEditsFromDom(selectedMaterial());
+  }
   const material = selectedMaterial();
   state.currentStep = Math.max(0, Math.min(material.steps.length - 1, index));
   renderLesson();
 }
 
 function selectMaterial(id) {
+  if (state.editMode) {
+    readLessonEditsFromDom(selectedMaterial());
+  }
+  state.editMode = false;
   state.selectedMaterialId = id;
   state.currentStep = 0;
   state.currentIssue = 0;
@@ -866,7 +895,8 @@ function setMode(mode) {
   nodes.railTop?.classList.toggle("hidden", !isLibrary);
   if (!isLibrary) {
     nodes.sourceVideo.pause();
-    syncDevelopFrame();
+    const material = selectedMaterial();
+    syncDevelopFrame(material?.builderProjectId);
   } else {
     syncVideoSource();
   }
@@ -879,21 +909,99 @@ function isLocalHost() {
   return ["localhost", "127.0.0.1"].includes(window.location.hostname);
 }
 
-function builderUrl() {
+function builderApiBase() {
+  return isLocalHost() ? "http://127.0.0.1:8765" : "https://posoolonono.beget.app/x-active-builder";
+}
+
+function canEditMaterial(material) {
+  return publishedEditableIds.has(material.id);
+}
+
+function setLessonEditMode(enabled) {
+  state.editMode = enabled;
+  editableLessonFields().forEach((node) => {
+    if (!node) return;
+    node.contentEditable = enabled ? "true" : "false";
+    node.classList.toggle("is-editing", enabled);
+    node.spellcheck = enabled;
+  });
+  nodes.editLesson?.classList.toggle("hidden", enabled || !canEditMaterial(selectedMaterial()));
+  nodes.saveLesson?.classList.toggle("hidden", !enabled);
+}
+
+function readLessonEditsFromDom(material) {
+  const step = material.steps[state.currentStep] || material.steps[0];
+  material.topic = nodes.lessonTopic.textContent.trim();
+  material.title = nodes.lessonTitle.textContent.trim();
+  material.description = nodes.lessonDescription.textContent.trim();
+  if (step) {
+    step.title = nodes.stepTitle.textContent.trim();
+    step.why = nodes.stepWhy.textContent.trim();
+    step.action = nodes.stepAction.textContent.trim();
+    step.result = nodes.stepResult.textContent.trim();
+    if (step.caption !== undefined) {
+      step.caption = step.title;
+    }
+  }
+}
+
+function updateLessonActionButtons(material) {
+  const editable = canEditMaterial(material);
+  nodes.editLesson?.classList.toggle("hidden", !editable || state.editMode);
+  nodes.saveLesson?.classList.toggle("hidden", !state.editMode);
+  nodes.openBuilder?.classList.toggle("hidden", !editable && !material.builderProjectId);
+}
+
+function builderUrl(projectId) {
+  const base = builderUrlRoot();
+  if (!projectId) return base;
+  const join = base.includes("?") ? "&" : "?";
+  return `${base}${join}project=${encodeURIComponent(projectId)}`;
+}
+
+function builderUrlRoot() {
   return isLocalHost() ? BUILDER_LOCAL_URL : BUILDER_ONLINE_URL;
 }
 
-function syncDevelopFrame() {
+function syncDevelopFrame(projectId) {
   const frame = document.querySelector("#develop-frame");
   const note = document.querySelector("#develop-note");
   const link = document.querySelector("#develop-open-link");
   if (!frame) return;
 
-  const url = builderUrl();
+  const url = builderUrl(projectId || "");
   if (link) link.href = url;
   frame.src = url;
   frame.classList.remove("hidden");
   note?.classList.add("hidden");
+}
+
+async function saveLessonEdits() {
+  const material = selectedMaterial();
+  if (!canEditMaterial(material)) return;
+  readLessonEditsFromDom(material);
+  nodes.saveLesson.disabled = true;
+  nodes.saveLesson.textContent = "Сохранение…";
+  try {
+    const response = await fetch(`${builderApiBase()}/api/published-lessons/${encodeURIComponent(material.id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(material)
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Не удалось сохранить урок.");
+    }
+    setLessonEditMode(false);
+    updateLessonActionButtons(material);
+    nodes.saveLesson.textContent = "Сохранить";
+    alert(payload.message || "Урок сохранён.");
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    nodes.saveLesson.disabled = false;
+    if (!state.editMode) nodes.saveLesson.textContent = "Сохранить";
+  }
 }
 
 nodes.modeButtons.forEach((button) => {
@@ -931,6 +1039,35 @@ nodes.viewTabs.forEach((tab) => {
 nodes.prevStep.addEventListener("click", () => setStep(state.currentStep - 1));
 nodes.nextStep.addEventListener("click", () => setStep(state.currentStep + 1));
 
+nodes.editLesson?.addEventListener("click", () => {
+  enableLessonEditing();
+});
+
+nodes.saveLesson?.addEventListener("click", () => {
+  saveLessonEdits();
+});
+
+nodes.openBuilder?.addEventListener("click", () => {
+  const material = selectedMaterial();
+  setMode("develop");
+  syncDevelopFrame(material.builderProjectId);
+});
+
+editableLessonFields().forEach((node) => {
+  node?.addEventListener("click", () => {
+    if (!canEditMaterial(selectedMaterial())) return;
+    if (!state.editMode) {
+      enableLessonEditing();
+    }
+  });
+});
+
+function enableLessonEditing() {
+  if (!canEditMaterial(selectedMaterial())) return;
+  setLessonEditMode(true);
+  updateLessonActionButtons(selectedMaterial());
+}
+
 nodes.stepComplete.addEventListener("change", () => {
   const set = completedSet();
   if (nodes.stepComplete.checked) {
@@ -967,6 +1104,11 @@ nodes.sidebarRestore.addEventListener("click", () => setSidebarCollapsed(false))
 
 async function bootstrap() {
   await loadPublishedMaterials();
+  const params = new URLSearchParams(window.location.search);
+  const lessonId = params.get("lesson");
+  if (lessonId && materials.some((material) => material.id === lessonId)) {
+    state.selectedMaterialId = lessonId;
+  }
   renderShell();
   renderLesson();
   setView("guide");
