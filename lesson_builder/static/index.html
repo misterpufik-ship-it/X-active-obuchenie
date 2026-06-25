@@ -116,10 +116,6 @@
             </section>
 
             <section class="panel step-editor">
-              <div class="step-format-bar">
-                <span class="step-format-label">Формат текста:</span>
-                <button type="button" class="format-bold-red-btn" id="format-bold-red" title="Выделите текст и нажмите">Жирный красный</button>
-              </div>
               <div class="step-fields meta-grid step-fields-grid">
                 <label>Заголовок<input id="step-title" type="text" /></label>
                 <label>Зачем этот шаг<div id="step-why" class="rich-field" contenteditable="true" data-placeholder="Зачем нужен этот шаг"></div></label>
@@ -209,7 +205,11 @@
       </form>
     </dialog>
 
-    <script src="static/canvas-editor.js?v=20260625b"></script>
-    <script src="static/builder.js?v=20260625b"></script>
+    <div id="rich-format-bubble" class="rich-format-bubble hidden" role="toolbar" aria-label="Форматирование текста">
+      <button type="button" id="format-bold-btn" class="format-bold-btn" title="Жирный">B</button>
+    </div>
+
+    <script src="static/canvas-editor.js?v=20260625c"></script>
+    <script src="static/builder.js?v=20260625c"></script>
   </body>
 </html>

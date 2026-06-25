@@ -749,6 +749,45 @@ dialog menu {
   margin-bottom: 10px;
 }
 
+.rich-format-bubble {
+  position: fixed;
+  z-index: 2000;
+  transform: translate(-50%, -100%);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #1f2933;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+}
+
+.rich-format-bubble.hidden {
+  display: none;
+}
+
+.format-bold-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.format-bold-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.rich-field strong,
+.rich-field b {
+  font-weight: 800;
+}
+
 .step-format-label {
   font-size: 13px;
   color: var(--muted);

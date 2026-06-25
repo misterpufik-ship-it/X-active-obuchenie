@@ -953,6 +953,15 @@ button {
   font-weight: 800;
 }
 
+#step-why strong,
+#step-why b,
+#step-action strong,
+#step-action b,
+#step-result strong,
+#step-result b {
+  font-weight: 800;
+}
+
 .screenshot-frame img {
   display: block;
   width: 100%;

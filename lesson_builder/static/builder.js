@@ -85,6 +85,8 @@ const nodes = {
   canvasLightboxClose: document.querySelector("#canvas-lightbox-close"),
   canvasPlaceholderClose: document.querySelector("#canvas-placeholder-close"),
   publishButton: document.querySelector("#publish-project"),
+  formatBoldBubble: document.querySelector("#rich-format-bubble"),
+  formatBoldBtn: document.querySelector("#format-bold-btn"),
 };
 
 let bgImage = null;
@@ -96,6 +98,8 @@ let annotationDockParent = null;
 let annotationDockNext = null;
 let uploadInProgress = false;
 let pasteHandled = false;
+let saveChain = Promise.resolve();
+let savedSelectionRange = null;
 
 const RICH_FIELDS = () => [nodes.stepWhy, nodes.stepComment, nodes.stepAction, nodes.stepResult].filter(Boolean);
 
@@ -138,37 +142,70 @@ function activeRichField() {
   return RICH_FIELDS().find((field) => field === active) || null;
 }
 
-function applyBoldRedFormat() {
+function applyBoldFormat() {
   const field = activeRichField();
-  if (!field) {
-    nodes.statusMessage.textContent = "Сначала кликните в поле шага и выделите текст.";
-    return;
-  }
+  if (!field || !savedSelectionRange) return;
+
   field.focus();
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-    nodes.statusMessage.textContent = "Выделите фрагмент текста для форматирования.";
-    return;
-  }
-  const range = selection.getRangeAt(0);
-  if (!field.contains(range.commonAncestorContainer)) return;
+  if (!selection) return;
+  selection.removeAllRanges();
+  selection.addRange(savedSelectionRange);
 
   const wrapper = document.createElement("strong");
-  wrapper.className = "lesson-text-red";
   try {
-    range.surroundContents(wrapper);
+    wrapper.append(savedSelectionRange.extractContents());
+    savedSelectionRange.insertNode(wrapper);
   } catch {
-    const fragment = range.extractContents();
-    wrapper.appendChild(fragment);
-    range.insertNode(wrapper);
+    nodes.statusMessage.textContent = "Не удалось применить жирный текст к этому фрагменту.";
+    return;
   }
+
   selection.removeAllRanges();
   const next = document.createRange();
   next.selectNodeContents(wrapper);
   next.collapse(false);
   selection.addRange(next);
+  savedSelectionRange = next.cloneRange();
   scheduleSaveStep();
-  nodes.statusMessage.textContent = "Текст выделен жирным красным.";
+  updateFormatBubble();
+  nodes.statusMessage.textContent = "Текст выделен жирным.";
+}
+
+function updateFormatBubble() {
+  const bubble = nodes.formatBoldBubble;
+  if (!bubble) return;
+
+  const field = activeRichField();
+  const selection = window.getSelection();
+  if (!field || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+    bubble.classList.add("hidden");
+    savedSelectionRange = null;
+    return;
+  }
+
+  const range = selection.getRangeAt(0);
+  if (!field.contains(range.commonAncestorContainer)) {
+    bubble.classList.add("hidden");
+    savedSelectionRange = null;
+    return;
+  }
+
+  savedSelectionRange = range.cloneRange();
+  const rect = range.getBoundingClientRect();
+  if (!rect.width && !rect.height) {
+    bubble.classList.add("hidden");
+    return;
+  }
+
+  bubble.style.left = `${rect.left + rect.width / 2}px`;
+  bubble.style.top = `${rect.top - 8}px`;
+  bubble.classList.remove("hidden");
+}
+
+function hideFormatBubble() {
+  nodes.formatBoldBubble?.classList.add("hidden");
+  savedSelectionRange = null;
 }
 
 function sanitizeLessonHtml(html) {
@@ -504,12 +541,19 @@ function fileUrl(relPath) {
 
 function scheduleSaveProject() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveProjectMeta, 500);
+  saveTimer = setTimeout(() => enqueueSave(saveProjectMeta), 500);
 }
 
 function scheduleSaveStep() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveStepFields, 400);
+  saveTimer = setTimeout(
+    () =>
+      enqueueSave(async () => {
+        await saveProjectMeta();
+        renderStepsList();
+      }),
+    400
+  );
 }
 
 function linesToList(value) {
@@ -676,6 +720,7 @@ function renderStepsList() {
 
   nodes.stepsList.querySelectorAll(".step-card-btn").forEach((button) => {
     button.addEventListener("click", async () => {
+      syncCanvasToCurrentFrame();
       await flushPendingSave();
       state.selectedStepId = button.dataset.step;
       state.selectedFrameId = selectedStepFrame()?.id || null;
@@ -708,6 +753,7 @@ function renderStepFramesStrip() {
   nodes.stepFramesStrip.querySelectorAll(".step-frame-thumb").forEach((button) => {
     button.addEventListener("click", async () => {
       if (state.selectedFrameId === button.dataset.frame) return;
+      syncCanvasToCurrentFrame();
       await flushPendingSave();
       state.selectedFrameId = button.dataset.frame;
       await renderStepEditor();
@@ -816,7 +862,17 @@ function collectProjectPayload() {
   };
 }
 
+function syncCanvasToCurrentFrame() {
+  const editor = canvasEditor;
+  const frame = selectedStepFrame();
+  const step = selectedStep();
+  if (!editor || !frame || !step) return;
+  frame.annotations = editor.getAnnotations();
+  syncStepLegacyFields(step);
+}
+
 function syncStepFromForm() {
+  syncCanvasToCurrentFrame();
   const step = selectedStep();
   if (!step) return;
   step.title = nodes.stepTitle.value.trim();
@@ -824,20 +880,32 @@ function syncStepFromForm() {
   step.action = getActionHtml();
   step.comment = getRichHtml(nodes.stepComment);
   step.result = getRichHtml(nodes.stepResult);
-  syncStepLegacyFields(step);
+}
+
+function mergeSavedProject(saved, { keepSteps = true } = {}) {
+  const localSteps = state.project?.steps;
+  Object.assign(state.project, saved);
+  if (keepSteps && localSteps) {
+    state.project.steps = localSteps;
+  }
+}
+
+function enqueueSave(task) {
+  saveChain = saveChain
+    .then(task)
+    .catch((error) => {
+      console.error(error);
+      nodes.statusMessage.textContent = error.message || "Ошибка сохранения.";
+    });
+  return saveChain;
 }
 
 async function flushPendingSave() {
   clearTimeout(saveTimer);
   saveTimer = null;
   if (!state.project) return;
-  syncStepFromForm();
-  const payload = collectProjectPayload();
-  Object.assign(state.project, payload);
-  state.project = await api(`/api/projects/${state.project.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+  await enqueueSave(async () => {
+    await saveProjectMeta();
   });
 }
 
@@ -851,13 +919,12 @@ async function saveProjectMeta() {
   syncStepFromForm();
   const payload = collectProjectPayload();
   Object.assign(state.project, payload);
-  state.project = await api(`/api/projects/${state.project.id}`, {
+  const saved = await api(`/api/projects/${state.project.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  renderProjectList();
-  nodes.statusMessage.textContent = "Сохранено.";
+  mergeSavedProject(saved, { keepSteps: true });
 }
 
 async function saveStepFields() {
@@ -1104,6 +1171,7 @@ document.querySelector("#apply-frame").addEventListener("click", async () => {
     return;
   }
   cancelPendingSave();
+  syncCanvasToCurrentFrame();
   syncStepFromForm();
   addStepFrame(step, frameFile);
   await saveStepFields();
@@ -1119,6 +1187,7 @@ document.querySelector("#delete-step-frame").addEventListener("click", async () 
   }
   const frames = normalizeStepFrames(step);
   if (!confirm(`Удалить скриншот ${frames.findIndex((item) => item.id === frame.id) + 1}?`)) return;
+  syncCanvasToCurrentFrame();
   step.frames = frames.filter((item) => item.id !== frame.id);
   syncStepLegacyFields(step);
   state.selectedFrameId = step.frames[0]?.id || null;
@@ -1219,7 +1288,24 @@ async function handlePaste(event) {
   }
 }
 
-document.querySelector("#format-bold-red")?.addEventListener("click", applyBoldRedFormat);
+document.addEventListener("selectionchange", () => {
+  window.requestAnimationFrame(updateFormatBubble);
+});
+
+document.addEventListener("mousedown", (event) => {
+  if (event.target.closest("#rich-format-bubble, .rich-field")) return;
+  hideFormatBubble();
+});
+
+nodes.formatBoldBtn?.addEventListener("mousedown", (event) => {
+  event.preventDefault();
+  applyBoldFormat();
+});
+
+RICH_FIELDS().forEach((node) => {
+  node.addEventListener("keyup", updateFormatBubble);
+  node.addEventListener("mouseup", updateFormatBubble);
+});
 
 nodes.canvasWrap?.addEventListener("click", () => nodes.canvasWrap.focus());
 nodes.stepFramesStrip?.addEventListener("click", () => nodes.stepFramesStrip.focus());
