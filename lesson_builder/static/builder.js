@@ -87,6 +87,7 @@ const nodes = {
   publishButton: document.querySelector("#publish-project"),
   formatBoldBubble: document.querySelector("#rich-format-bubble"),
   formatBoldBtn: document.querySelector("#format-bold-btn"),
+  formatNormalBtn: document.querySelector("#format-normal-btn"),
 };
 
 let bgImage = null;
@@ -142,20 +143,40 @@ function activeRichField() {
   return RICH_FIELDS().find((field) => field === active) || null;
 }
 
+function restoreSavedSelection() {
+  const field = activeRichField();
+  if (!field || !savedSelectionRange) return null;
+  field.focus();
+  const selection = window.getSelection();
+  if (!selection) return null;
+  selection.removeAllRanges();
+  selection.addRange(savedSelectionRange.cloneRange());
+  return selection;
+}
+
+function unwrapBoldInFragment(fragment) {
+  fragment.querySelectorAll("strong, b").forEach((node) => {
+    const parent = node.parentNode;
+    if (!parent) return;
+    while (node.firstChild) {
+      parent.insertBefore(node.firstChild, node);
+    }
+    parent.removeChild(node);
+  });
+}
+
 function applyBoldFormat() {
   const field = activeRichField();
   if (!field || !savedSelectionRange) return;
 
-  field.focus();
-  const selection = window.getSelection();
+  const selection = restoreSavedSelection();
   if (!selection) return;
-  selection.removeAllRanges();
-  selection.addRange(savedSelectionRange);
 
+  const range = selection.getRangeAt(0);
   const wrapper = document.createElement("strong");
   try {
-    wrapper.append(savedSelectionRange.extractContents());
-    savedSelectionRange.insertNode(wrapper);
+    wrapper.append(range.extractContents());
+    range.insertNode(wrapper);
   } catch {
     nodes.statusMessage.textContent = "Не удалось применить жирный текст к этому фрагменту.";
     return;
@@ -164,12 +185,40 @@ function applyBoldFormat() {
   selection.removeAllRanges();
   const next = document.createRange();
   next.selectNodeContents(wrapper);
-  next.collapse(false);
   selection.addRange(next);
   savedSelectionRange = next.cloneRange();
   scheduleSaveStep();
   updateFormatBubble();
-  nodes.statusMessage.textContent = "Текст выделен жирным.";
+  nodes.statusMessage.textContent = "Выделенный фрагмент сделан жирным.";
+}
+
+function applyNormalFormat() {
+  const field = activeRichField();
+  if (!field || !savedSelectionRange) return;
+
+  const selection = restoreSavedSelection();
+  if (!selection) return;
+
+  const range = selection.getRangeAt(0);
+  const fragment = range.extractContents();
+  unwrapBoldInFragment(fragment);
+  const first = fragment.firstChild;
+  const last = fragment.lastChild;
+  range.insertNode(fragment);
+
+  selection.removeAllRanges();
+  if (first && last) {
+    const next = document.createRange();
+    next.setStartBefore(first);
+    next.setEndAfter(last);
+    selection.addRange(next);
+    savedSelectionRange = next.cloneRange();
+  } else {
+    savedSelectionRange = null;
+  }
+  scheduleSaveStep();
+  updateFormatBubble();
+  nodes.statusMessage.textContent = "Жирное форматирование снято с выделенного фрагмента.";
 }
 
 function updateFormatBubble() {
@@ -345,12 +394,16 @@ function labelsUsedInAction() {
   const text = plainTextFromHtml(getActionHtml());
   const validLabels = new Set(stepAnnotationLabels());
   const used = new Set();
-  const re = /\d+/g;
+  const re = /\{(\d+)\}/g;
   let match;
   while ((match = re.exec(text)) !== null) {
-    if (validLabels.has(match[0])) used.add(match[0]);
+    if (validLabels.has(match[1])) used.add(match[1]);
   }
   return used;
+}
+
+function markerToken(label) {
+  return `{${label}}`;
 }
 
 function insertLabelIntoAction(label) {
@@ -363,7 +416,7 @@ function insertLabelIntoAction(label) {
   }
 
   field.focus();
-  const insert = String(label);
+  const insert = markerToken(label);
   const selection = window.getSelection();
   if (selection && selection.rangeCount) {
     const range = selection.getRangeAt(0);
@@ -425,7 +478,7 @@ function renderActionMarkers() {
         : actionFieldEditing
           ? "Вставить номер в текст действия"
           : "Добавить номер в текст действия";
-      return `<button type="button" class="action-marker-btn ${stateClass}" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(label)}</button>`;
+      return `<button type="button" class="action-marker-btn ${stateClass}" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(markerToken(label))}</button>`;
     })
     .join("")}`;
   nodes.stepActionMarkers.querySelectorAll(".action-marker-btn").forEach((button) => {
@@ -1300,6 +1353,11 @@ document.addEventListener("mousedown", (event) => {
 nodes.formatBoldBtn?.addEventListener("mousedown", (event) => {
   event.preventDefault();
   applyBoldFormat();
+});
+
+nodes.formatNormalBtn?.addEventListener("mousedown", (event) => {
+  event.preventDefault();
+  applyNormalFormat();
 });
 
 RICH_FIELDS().forEach((node) => {

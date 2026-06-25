@@ -765,7 +765,8 @@ dialog menu {
   display: none;
 }
 
-.format-bold-btn {
+.format-bold-btn,
+.format-normal-btn {
   min-width: 32px;
   height: 32px;
   padding: 0 10px;
@@ -779,7 +780,13 @@ dialog menu {
   cursor: pointer;
 }
 
-.format-bold-btn:hover {
+.format-normal-btn {
+  font-weight: 500;
+  font-style: italic;
+}
+
+.format-bold-btn:hover,
+.format-normal-btn:hover {
   background: rgba(255, 255, 255, 0.14);
 }
 

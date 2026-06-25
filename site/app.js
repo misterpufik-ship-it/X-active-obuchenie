@@ -762,7 +762,7 @@ function renderInteractiveActionHtml(html, labels) {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent || "";
       if (!text || !labelSet.size) return;
-      const re = /(\d+)/g;
+      const re = /\{(\d+)\}/g;
       if (!re.test(text)) return;
       re.lastIndex = 0;
       const fragment = document.createDocumentFragment();
@@ -776,12 +776,12 @@ function renderInteractiveActionHtml(html, labels) {
           button.type = "button";
           button.className = "action-ref-btn";
           button.dataset.label = label;
-          button.textContent = label;
+          button.textContent = `{${label}}`;
           fragment.append(button);
         } else {
-          fragment.append(document.createTextNode(label));
+          fragment.append(document.createTextNode(match[0]));
         }
-        last = match.index + label.length;
+        last = match.index + match[0].length;
       }
       fragment.append(document.createTextNode(text.slice(last)));
       node.replaceWith(fragment);
@@ -804,7 +804,7 @@ function renderInteractiveAction(text, labels) {
   if (!source.trim()) return "";
   const labelSet = labels instanceof Set ? labels : new Set(labels);
   const parts = [];
-  const re = /(\d+)/g;
+  const re = /\{(\d+)\}/g;
   let last = 0;
   let match;
   while ((match = re.exec(source)) !== null) {
@@ -812,12 +812,12 @@ function renderInteractiveAction(text, labels) {
     const label = match[1];
     if (labelSet.has(label)) {
       parts.push(
-        `<button type="button" class="action-ref-btn" data-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`
+        `<button type="button" class="action-ref-btn" data-label="${escapeHtml(label)}">{${escapeHtml(label)}}</button>`
       );
     } else {
-      parts.push(escapeHtml(label));
+      parts.push(escapeHtml(match[0]));
     }
-    last = match.index + label.length;
+    last = match.index + match[0].length;
   }
   parts.push(escapeHtml(source.slice(last)));
   return parts.join("");

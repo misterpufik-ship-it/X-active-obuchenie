@@ -123,7 +123,7 @@
                 <div class="span-3 field-block action-label">
                   <span class="field-caption">Действие</span>
                   <div class="action-field" id="action-field">
-                    <div id="step-action" class="rich-field" contenteditable="true" data-placeholder="Кликните в поле, затем нажмите метку ниже — номер вставится в текст"></div>
+                    <div id="step-action" class="rich-field" contenteditable="true" data-placeholder="Кликните в поле, затем нажмите метку — в текст вставится {1}, {2}… Обычные цифры без скобок остаются текстом"></div>
                     <div class="action-markers" id="step-action-markers"></div>
                   </div>
                 </div>
@@ -207,9 +207,10 @@
 
     <div id="rich-format-bubble" class="rich-format-bubble hidden" role="toolbar" aria-label="Форматирование текста">
       <button type="button" id="format-bold-btn" class="format-bold-btn" title="Жирный">B</button>
+      <button type="button" id="format-normal-btn" class="format-normal-btn" title="Обычный текст">S</button>
     </div>
 
-    <script src="static/canvas-editor.js?v=20260625c"></script>
-    <script src="static/builder.js?v=20260625c"></script>
+    <script src="static/canvas-editor.js?v=20260625d"></script>
+    <script src="static/builder.js?v=20260625d"></script>
   </body>
 </html>
