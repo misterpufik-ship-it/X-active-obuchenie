@@ -55,18 +55,31 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
     material_steps: list[dict[str, Any]] = []
     deploy_files = ["published-lessons.json"]
     for index, step in enumerate(data.get("steps", []), start=1):
-        asset_name = f"{material_id}_step_{index:02d}.png"
-        if step.get("frameFile"):
-            rendered = render_annotated_image(project_id, step)
+        step_images: list[dict[str, str]] = []
+        for frame_index, frame in enumerate(storage.get_step_frames(step), start=1):
+            asset_name = f"{material_id}_step_{index:02d}_{frame_index:02d}.png"
+            rendered = render_annotated_image(
+                project_id,
+                frame["frameFile"],
+                frame.get("annotations"),
+                target_name=f"{step['id']}_{frame.get('id', frame_index)}",
+            )
             shutil.copy2(rendered, ASSETS_DIR / asset_name)
             deploy_files.append(f"assets/{asset_name}")
+            step_images.append(
+                {
+                    "image": f"./assets/{asset_name}",
+                    "caption": step.get("comment", "") or step.get("title", ""),
+                }
+            )
         material_steps.append(
             {
                 "title": step.get("title", f"Шаг {index}"),
                 "why": step.get("why", ""),
                 "action": step.get("action", ""),
                 "result": step.get("result", ""),
-                "image": f"./assets/{asset_name}",
+                "image": step_images[0]["image"] if step_images else "",
+                "images": step_images,
                 "caption": step.get("comment", "") or step.get("title", ""),
             }
         )

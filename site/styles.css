@@ -733,7 +733,14 @@ button {
   accent-color: var(--green);
 }
 
-.screenshot-frame {
+.screenshot-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.screenshot-gallery .screenshot-frame {
   margin: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -762,6 +769,13 @@ button {
   border-top: 1px solid var(--line);
   background: #fafcff;
   font-size: 14px;
+}
+
+.screenshot-empty {
+  margin: 0;
+  padding: 24px 14px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .checklist {

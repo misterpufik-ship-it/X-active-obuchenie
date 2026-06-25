@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -180,6 +181,7 @@ def split_into_steps(segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "timeEnd": end,
                 "frameTime": round((start + end) / 2, 2),
                 "frameFile": "",
+                "frames": [],
                 "annotatedFile": "",
                 "annotations": [],
             }
@@ -252,7 +254,10 @@ def match_steps_to_frames(steps: list[dict[str, Any]], frames: list[dict[str, An
         if chosen is None:
             chosen = _nearest_frame(frames, target_time)
         if chosen:
-            step["frameFile"] = f"frames_unique/{chosen['file']}"
+            frame_file = f"frames_unique/{chosen['file']}"
+            frame_id = f"frame-{uuid.uuid4().hex[:8]}"
+            step["frames"] = [{"id": frame_id, "frameFile": frame_file, "annotations": []}]
+            step["frameFile"] = frame_file
             step["frameTime"] = chosen["time"]
             used.add(chosen["file"])
 

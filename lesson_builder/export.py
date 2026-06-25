@@ -31,13 +31,18 @@ def _hex_to_rgba(value: str, alpha: int = 255) -> tuple[int, int, int, int]:
     return 0, 118, 255, alpha
 
 
-def render_annotated_image(project_id: str, step: dict[str, Any]) -> Path:
+def render_annotated_image(
+    project_id: str,
+    frame_file: str,
+    annotations: list[dict[str, Any]] | None = None,
+    *,
+    target_name: str | None = None,
+) -> Path:
     paths = storage.ensure_dirs(project_id)
-    frame_rel = step.get("frameFile")
-    if not frame_rel:
+    if not frame_file:
         raise RuntimeError("У шага нет скриншота.")
 
-    source = storage.project_dir(project_id) / frame_rel
+    source = storage.project_dir(project_id) / frame_file
     if not source.is_file():
         raise FileNotFoundError(source)
 
@@ -45,7 +50,7 @@ def render_annotated_image(project_id: str, step: dict[str, Any]) -> Path:
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay, "RGBA")
 
-    for item in step.get("annotations", []):
+    for item in annotations or []:
         color = _hex_to_rgba(item.get("color", "#0076ff"), 230)
         stroke = max(2, int(item.get("stroke", 4)))
         item_type = item.get("type")
@@ -104,7 +109,8 @@ def render_annotated_image(project_id: str, step: dict[str, Any]) -> Path:
             draw.text((tx, ty), text, fill=(17, 24, 39, 255), font=font)
 
     merged = Image.alpha_composite(image, overlay).convert("RGB")
-    target = paths["annotated"] / f"{step['id']}.png"
+    safe_name = (target_name or Path(frame_file).stem).replace("/", "_")
+    target = paths["annotated"] / f"{safe_name}.png"
     merged.save(target, optimize=True)
     return target
 
@@ -118,11 +124,22 @@ def export_html(project_id: str) -> Path:
 
     step_blocks: list[str] = []
     for step in data.get("steps", []):
-        if step.get("frameFile"):
-            annotated = render_annotated_image(project_id, step)
-            asset_name = f"{step['id']}.png"
-            Image.open(annotated).save(assets_dir / asset_name, optimize=True)
-            image_html = f'<img src="./assets/{asset_name}" alt="{html.escape(step.get("title", ""))}" />'
+        frames = storage.get_step_frames(step)
+        if frames:
+            image_parts: list[str] = []
+            for frame_index, frame in enumerate(frames, start=1):
+                annotated = render_annotated_image(
+                    project_id,
+                    frame["frameFile"],
+                    frame.get("annotations"),
+                    target_name=f"{step['id']}_{frame.get('id', frame_index)}",
+                )
+                asset_name = f"{step['id']}_{frame_index:02d}.png"
+                Image.open(annotated).save(assets_dir / asset_name, optimize=True)
+                image_parts.append(
+                    f'<figure><img src="./assets/{asset_name}" alt="{html.escape(step.get("title", ""))} — {frame_index}" /></figure>'
+                )
+            image_html = f'<div class="step-images">{"".join(image_parts)}</div>'
         else:
             image_html = '<div class="no-image">Скриншот не назначен</div>'
 
@@ -310,8 +327,13 @@ def export_pdf(project_id: str) -> Path:
         story.append(Paragraph("Готово, если", label_style))
         story.append(Paragraph(step.get("result", ""), body_style))
 
-        if step.get("frameFile"):
-            annotated = render_annotated_image(project_id, step)
+        for frame_index, frame in enumerate(storage.get_step_frames(step), start=1):
+            annotated = render_annotated_image(
+                project_id,
+                frame["frameFile"],
+                frame.get("annotations"),
+                target_name=f"{step['id']}_{frame.get('id', frame_index)}",
+            )
             img = RLImage(str(annotated))
             scale = min(max_width / img.drawWidth, max_height / img.drawHeight, 1)
             img.drawWidth *= scale
@@ -342,14 +364,23 @@ def export_app_js_snippet(project_id: str) -> str:
     }
 
     for step in data.get("steps", []):
-        image = f"./assets/{step['id']}.png"
+        step_images: list[dict[str, str]] = []
+        for frame_index, frame in enumerate(storage.get_step_frames(step), start=1):
+            image = f"./assets/{step['id']}_{frame_index:02d}.png"
+            step_images.append(
+                {
+                    "image": image,
+                    "caption": step.get("comment", "") or step.get("title", ""),
+                }
+            )
         material["steps"].append(
             {
                 "title": step.get("title", ""),
                 "why": step.get("why", ""),
                 "action": step.get("action", ""),
                 "result": step.get("result", ""),
-                "image": image,
+                "image": step_images[0]["image"] if step_images else "",
+                "images": step_images,
                 "caption": step.get("comment", "") or step.get("title", ""),
             }
         )

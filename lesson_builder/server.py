@@ -5,6 +5,7 @@ from __future__ import annotations
 import mimetypes
 import threading
 import traceback
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -200,7 +201,12 @@ def api_upload_image(project_id: str):
     if apply_step:
         for step in data.get("steps", []):
             if step.get("id") == apply_step:
+                frame_id = f"frame-{uuid.uuid4().hex[:8]}"
+                new_frame = {"id": frame_id, "frameFile": saved["file"], "annotations": []}
+                storage.get_step_frames(step)
+                step["frames"].append(new_frame)
                 step["frameFile"] = saved["file"]
+                saved["frameId"] = frame_id
                 break
 
     data["statusMessage"] = f"Изображение добавлено: {saved['file'].split('/')[-1]}"

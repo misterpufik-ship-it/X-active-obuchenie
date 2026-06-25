@@ -594,10 +594,8 @@ const nodes = {
   stepWhy: document.querySelector("#step-why"),
   stepAction: document.querySelector("#step-action"),
   stepResult: document.querySelector("#step-result"),
-  stepImage: document.querySelector("#step-image"),
-  stepCaption: document.querySelector("#step-caption"),
+  stepImages: document.querySelector("#step-images"),
   stepComplete: document.querySelector("#step-complete"),
-  screenshotZoom: document.querySelector("#screenshot-zoom"),
   lightbox: document.querySelector("#image-lightbox"),
   lightboxImage: document.querySelector("#lightbox-image"),
   lightboxCaption: document.querySelector("#lightbox-caption"),
@@ -717,6 +715,16 @@ function renderMaterialList(items) {
   });
 }
 
+function stepScreenshots(step) {
+  if (Array.isArray(step.images) && step.images.length) {
+    return step.images;
+  }
+  if (step.image) {
+    return [{ image: step.image, caption: step.caption || "" }];
+  }
+  return [];
+}
+
 function renderLesson() {
   const material = selectedMaterial();
   const step = material.steps[state.currentStep] || material.steps[0];
@@ -748,9 +756,36 @@ function renderLesson() {
   nodes.stepWhy.textContent = step.why;
   nodes.stepAction.textContent = step.action;
   nodes.stepResult.textContent = step.result;
-  nodes.stepImage.src = step.image;
-  nodes.stepImage.alt = `Скриншот: ${step.title}`;
-  nodes.stepCaption.textContent = step.caption;
+  const screenshots = stepScreenshots(step);
+  if (!screenshots.length) {
+    nodes.stepImages.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
+  } else {
+    nodes.stepImages.innerHTML = screenshots
+      .map((item, index) => {
+        const caption = item.caption
+          ? `<figcaption>${item.caption}${screenshots.length > 1 ? ` · скрин ${index + 1}` : ""}</figcaption>`
+          : screenshots.length > 1
+            ? `<figcaption>Скриншот ${index + 1}</figcaption>`
+            : "";
+        return `<figure class="screenshot-frame">
+          <button class="screenshot-zoom" type="button" aria-label="Открыть скриншот крупно" data-image-index="${index}">
+            <img src="${item.image}" alt="Скриншот: ${step.title}${screenshots.length > 1 ? ` (${index + 1})` : ""}" />
+          </button>
+          ${caption}
+        </figure>`;
+      })
+      .join("");
+    nodes.stepImages.querySelectorAll(".screenshot-zoom").forEach((button) => {
+      button.addEventListener("click", () => {
+        const item = screenshots[Number(button.dataset.imageIndex)];
+        if (!item) return;
+        nodes.lightboxImage.src = item.image;
+        nodes.lightboxImage.alt = button.querySelector("img")?.alt || "";
+        nodes.lightboxCaption.textContent = item.caption || "";
+        nodes.lightbox.hidden = false;
+      });
+    });
+  }
   nodes.stepComplete.checked = completedSet(material.id).has(state.currentStep);
 
   nodes.checklist.innerHTML = material.checklist
@@ -904,13 +939,6 @@ nodes.stepComplete.addEventListener("change", () => {
     set.delete(state.currentStep);
   }
   renderLesson();
-});
-
-nodes.screenshotZoom.addEventListener("click", () => {
-  nodes.lightboxImage.src = nodes.stepImage.src;
-  nodes.lightboxImage.alt = nodes.stepImage.alt;
-  nodes.lightboxCaption.textContent = nodes.stepCaption.textContent;
-  nodes.lightbox.hidden = false;
 });
 
 nodes.lightboxClose.addEventListener("click", () => {

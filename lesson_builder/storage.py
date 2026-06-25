@@ -127,3 +127,23 @@ def update_status(project_id: str, status: str, message: str) -> None:
 
 def rel_path(project_id: str, path: Path) -> str:
     return str(path.relative_to(project_dir(project_id))).replace("\\", "/")
+
+
+def get_step_frames(step: dict[str, Any], *, migrate: bool = True) -> list[dict[str, Any]]:
+    """Return screenshots for a step, migrating legacy single-frame fields when needed."""
+    frames = step.get("frames")
+    if isinstance(frames, list) and frames:
+        return frames
+    if migrate and step.get("frameFile"):
+        migrated = [
+            {
+                "id": f"frame-{step.get('id', 'legacy')}-1",
+                "frameFile": step["frameFile"],
+                "annotations": step.get("annotations") or [],
+            }
+        ]
+        step["frames"] = migrated
+        return migrated
+    if migrate and "frames" not in step:
+        step["frames"] = []
+    return step.get("frames") or []

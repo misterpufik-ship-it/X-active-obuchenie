@@ -22,10 +22,15 @@ function stepId() {
   return `step-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function frameId() {
+  return `frame-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
 const state = {
   projects: [],
   project: null,
   selectedStepId: null,
+  selectedFrameId: null,
   pollTimer: null,
   activeColor: "#1e88e5",
 };
@@ -55,6 +60,7 @@ const nodes = {
   stepComment: document.querySelector("#step-comment"),
   stepResult: document.querySelector("#step-result"),
   frameSelect: document.querySelector("#frame-select"),
+  stepFramesStrip: document.querySelector("#step-frames-strip"),
   canvas: document.querySelector("#annotation-canvas"),
   colorToolbar: document.querySelector("#color-toolbar"),
   colorPalette: document.querySelector("#color-palette"),
@@ -87,9 +93,9 @@ function initCanvasEditor() {
     nodes.canvas,
     nodes.colorPalette,
     (annotations) => {
-      const step = selectedStep();
-      if (!step) return;
-      step.annotations = annotations;
+      const frame = selectedStepFrame();
+      if (!frame) return;
+      frame.annotations = annotations;
       scheduleSaveStep();
     },
     {
@@ -152,6 +158,55 @@ async function api(path, options = {}) {
 
 function selectedStep() {
   return state.project?.steps?.find((step) => step.id === state.selectedStepId) || null;
+}
+
+function normalizeStepFrames(step) {
+  if (!step) return [];
+  if (Array.isArray(step.frames) && step.frames.length) {
+    return step.frames;
+  }
+  if (step.frameFile) {
+    step.frames = [
+      {
+        id: step.frameId || frameId(),
+        frameFile: step.frameFile,
+        annotations: step.annotations || [],
+      },
+    ];
+    return step.frames;
+  }
+  step.frames = step.frames || [];
+  return step.frames;
+}
+
+function selectedStepFrame(step = selectedStep()) {
+  const frames = normalizeStepFrames(step);
+  if (!frames.length) return null;
+  return frames.find((frame) => frame.id === state.selectedFrameId) || frames[0];
+}
+
+function stepFrameCount(step) {
+  return normalizeStepFrames(step).length;
+}
+
+function syncStepLegacyFields(step) {
+  const frames = normalizeStepFrames(step);
+  if (frames.length) {
+    step.frameFile = frames[0].frameFile;
+    step.annotations = frames[0].annotations || [];
+  } else {
+    step.frameFile = "";
+    step.annotations = [];
+  }
+}
+
+function addStepFrame(step, frameFile) {
+  const frames = normalizeStepFrames(step);
+  const frame = { id: frameId(), frameFile, annotations: [] };
+  frames.push(frame);
+  state.selectedFrameId = frame.id;
+  syncStepLegacyFields(step);
+  return frame;
 }
 
 function fileUrl(relPath) {
@@ -232,6 +287,7 @@ async function openProject(projectId) {
   await flushPendingSave();
   state.project = await api(`/api/projects/${projectId}`);
   state.selectedStepId = state.project.steps?.[0]?.id || null;
+  state.selectedFrameId = selectedStepFrame(state.project.steps?.[0])?.id || null;
   nodes.emptyState.classList.add("hidden");
   nodes.editor.classList.remove("hidden");
   renderEditor();
@@ -270,9 +326,11 @@ function renderStepsList() {
   nodes.stepsList.innerHTML = steps
     .map((step) => {
       const active = step.id === state.selectedStepId ? " is-active" : "";
+      const frameCount = stepFrameCount(step);
+      const shots = frameCount ? ` · ${frameCount} скрин.` : "";
       return `<button class="step-card-btn${active}" type="button" data-step="${step.id}">
         <strong>${step.number}. ${escapeHtml(step.title)}</strong>
-        <span>${escapeHtml(truncate(step.action, 72))}</span>
+        <span>${escapeHtml(truncate(step.action, 72))}${shots}</span>
       </button>`;
     })
     .join("");
@@ -281,8 +339,39 @@ function renderStepsList() {
     button.addEventListener("click", async () => {
       await flushPendingSave();
       state.selectedStepId = button.dataset.step;
+      state.selectedFrameId = selectedStepFrame()?.id || null;
       renderStepEditor();
       renderStepsList();
+    });
+  });
+}
+
+function renderStepFramesStrip() {
+  const step = selectedStep();
+  const frames = normalizeStepFrames(step);
+  if (!frames.length) {
+    nodes.stepFramesStrip.innerHTML = "";
+    nodes.stepFramesStrip.classList.add("is-empty");
+    return;
+  }
+
+  nodes.stepFramesStrip.classList.remove("is-empty");
+  nodes.stepFramesStrip.innerHTML = frames
+    .map((frame, index) => {
+      const active = frame.id === selectedStepFrame(step)?.id ? " is-active" : "";
+      return `<button class="step-frame-thumb${active}" type="button" data-frame="${frame.id}" title="Скриншот ${index + 1}">
+        <img src="${fileUrl(frame.frameFile)}" alt="Скриншот ${index + 1}" />
+        <span>${index + 1}</span>
+      </button>`;
+    })
+    .join("");
+
+  nodes.stepFramesStrip.querySelectorAll(".step-frame-thumb").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (state.selectedFrameId === button.dataset.frame) return;
+      await flushPendingSave();
+      state.selectedFrameId = button.dataset.frame;
+      await renderStepEditor();
     });
   });
 }
@@ -325,20 +414,22 @@ async function renderStepEditor() {
   nodes.stepComment.value = step.comment || "";
   nodes.stepResult.value = step.result || "";
 
-  if (step.frameFile) {
-    nodes.frameSelect.value = step.frameFile;
+  renderStepFramesStrip();
+  const frame = selectedStepFrame(step);
+  if (frame) {
+    state.selectedFrameId = frame.id;
   }
 
-  await loadCanvasImage(step);
+  await loadCanvasImage(frame);
   window.__canvasBgImage = bgImage;
-  editor.setAnnotations(step.annotations || []);
+  editor.setAnnotations(frame?.annotations || []);
   editor.redraw(bgImage);
   updatePaletteVisibility();
 }
 
-async function loadCanvasImage(step) {
+async function loadCanvasImage(frame) {
   const ctx = nodes.canvas.getContext("2d");
-  if (!step.frameFile) {
+  if (!frame?.frameFile) {
     bgImage = null;
     nodes.canvas.width = 960;
     nodes.canvas.height = 540;
@@ -346,7 +437,7 @@ async function loadCanvasImage(step) {
     ctx.fillRect(0, 0, nodes.canvas.width, nodes.canvas.height);
     ctx.fillStyle = "#65717f";
     ctx.font = "18px Segoe UI";
-    ctx.fillText("Скриншот не назначен — выберите кадр, загрузите файл или вставьте Ctrl+V", 36, 48);
+    ctx.fillText("Добавьте скриншот: + Скриншот, Ctrl+V или кадр из видео", 36, 48);
     return;
   }
 
@@ -359,7 +450,7 @@ async function loadCanvasImage(step) {
       resolve();
     };
     image.onerror = reject;
-    image.src = fileUrl(step.frameFile);
+    image.src = fileUrl(frame.frameFile);
   });
 }
 
@@ -389,6 +480,7 @@ function syncStepFromForm() {
   step.action = nodes.stepAction.value.trim();
   step.comment = nodes.stepComment.value.trim();
   step.result = nodes.stepResult.value.trim();
+  syncStepLegacyFields(step);
 }
 
 async function flushPendingSave() {
@@ -432,7 +524,7 @@ document.querySelector("#undo-annotation").addEventListener("click", () => {
 });
 
 document.querySelector("#clear-annotations").addEventListener("click", () => {
-  if (!confirm("Очистить все пометки на этом шаге?")) return;
+  if (!confirm("Очистить все пометки на этом скриншоте?")) return;
   initCanvasEditor().clearAll();
 });
 
@@ -504,12 +596,19 @@ document.querySelector("#add-step").addEventListener("click", async () => {
     action: "",
     comment: "",
     result: "",
-    frameFile: state.project.availableFrames?.[0]?.file || "",
+    frameFile: "",
+    frames: [],
     annotations: [],
   };
+  const firstFrame = state.project.availableFrames?.[0]?.file;
+  if (firstFrame) {
+    step.frames.push({ id: frameId(), frameFile: firstFrame, annotations: [] });
+    step.frameFile = firstFrame;
+  }
   state.project.steps = [...(state.project.steps || []), step];
   renumberSteps();
   state.selectedStepId = step.id;
+  state.selectedFrameId = step.frames[0]?.id || null;
   await saveProjectMeta();
   renderEditor();
 });
@@ -596,12 +695,28 @@ document.querySelector("#process-video").addEventListener("click", async () => {
 document.querySelector("#apply-frame").addEventListener("click", async () => {
   const step = selectedStep();
   if (!step) return;
-  const frame = nodes.frameSelect.value;
-  if (!frame) {
+  const frameFile = nodes.frameSelect.value;
+  if (!frameFile) {
     alert("Нет доступных кадров.");
     return;
   }
-  step.frameFile = frame;
+  addStepFrame(step, frameFile);
+  await saveStepFields();
+  await renderStepEditor();
+});
+
+document.querySelector("#delete-step-frame").addEventListener("click", async () => {
+  const step = selectedStep();
+  const frame = selectedStepFrame(step);
+  if (!step || !frame) {
+    alert("Нет скриншота для удаления.");
+    return;
+  }
+  const frames = normalizeStepFrames(step);
+  if (!confirm(`Удалить скриншот ${frames.findIndex((item) => item.id === frame.id) + 1}?`)) return;
+  step.frames = frames.filter((item) => item.id !== frame.id);
+  syncStepLegacyFields(step);
+  state.selectedFrameId = step.frames[0]?.id || null;
   await saveStepFields();
   await renderStepEditor();
 });
@@ -625,8 +740,14 @@ async function uploadStepImage(file, { applyToStep = true, label = "вручну
     throw new Error(payload.error || "Не удалось загрузить изображение.");
   }
   state.project = await response.json();
+  const step = selectedStep();
+  if (applyToStep && step) {
+    normalizeStepFrames(step);
+    const newest = step.frames[step.frames.length - 1];
+    if (newest) state.selectedFrameId = newest.id;
+  }
   renderEditor();
-  if (applyToStep && selectedStep()) {
+  if (applyToStep && step) {
     await renderStepEditor();
   }
 }
@@ -716,6 +837,7 @@ function startPolling() {
       stopPolling();
       if (fresh.steps?.length) {
         state.selectedStepId = fresh.steps[0].id;
+        state.selectedFrameId = selectedStepFrame(fresh.steps[0])?.id || null;
         await renderStepEditor();
       }
     }

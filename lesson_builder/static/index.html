@@ -113,17 +113,20 @@
               </div>
 
               <div class="frame-picker">
-                <label>Заменить скриншот
+                <label>Кадр из видео
                   <select id="frame-select"></select>
                 </label>
-                <button class="secondary-btn" id="apply-frame" type="button">Применить кадр</button>
+                <button class="secondary-btn" id="apply-frame" type="button">Добавить кадр</button>
               </div>
 
               <div class="screenshot-row">
                 <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
-                <button class="secondary-btn" id="upload-image" type="button">Загрузить файл</button>
+                <button class="secondary-btn" id="upload-image" type="button">+ Скриншот</button>
+                <button class="ghost-btn" id="delete-step-frame" type="button">Удалить скрин</button>
                 <span class="screenshot-hint">или <kbd>Ctrl</kbd>+<kbd>V</kbd> — вставка из Ножниц / буфера</span>
               </div>
+
+              <div class="step-frames-strip" id="step-frames-strip" aria-label="Скриншоты шага"></div>
 
               <div id="annotation-dock">
                 <div class="panel-head annotation-head">
