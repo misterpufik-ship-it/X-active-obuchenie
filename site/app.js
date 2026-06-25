@@ -1,0 +1,785 @@
+const materials = [
+  {
+    id: "wb-supply-selsup",
+    topic: "Поставки WB",
+    title: "Поставка на WB через SelsUp",
+    description:
+      "Полная инструкция по созданию поставки WB через SelsUp: загрузка файла, связка с номером WB, упаковка по коробам, печать штрихкодов, загрузка Excel обратно в WB, пропуск и оформление СДЭК.",
+    role: "Склад / менеджер поставки",
+    duration: "25-35 минут",
+    sourceVideo: "./videos/wb-selsup-supply.mp4",
+    videoNote:
+      "Исходное видео длится около 8 минут 49 секунд. Откройте его, если нужно сверить движение по экранам SelsUp, WB и печать штрихкодов.",
+    keywords: [
+      "wb",
+      "вб",
+      "wildberries",
+      "selsup",
+      "селсап",
+      "поставка",
+      "поставка wb",
+      "заказы на отгрузку",
+      "создать из файла",
+      "xls",
+      "excel",
+      "внешний номер",
+      "упаковка",
+      "шк коробов",
+      "штрихкод короба",
+      "штрихкод поставки",
+      "короба",
+      "палета",
+      "пропуск",
+      "сдэк",
+      "транспортная компания",
+      "инструкция"
+    ],
+    steps: [
+      {
+        title: "Выбрать файл поставки",
+        why: "Поставка начинается с XLS-файла, который прислал менеджер. По нему SelsUp создаст заказ на отгрузку.",
+        action:
+          "В SelsUp откройте раздел «Заказы на отгрузку» или «Поставки на маркетплейс FBO», нажмите «Создать из файла» и в окне выбора найдите нужный XLS. Выберите именно файл поставки, а не файл со штрихкодами коробов. После выбора дождитесь полной загрузки и не переходите дальше, пока поставка не появилась в списке.",
+        result: "Файл выбран, загрузка завершилась, в SelsUp появилась созданная поставка.",
+        image: "./assets/wb_supply_01_file_upload.png",
+        caption: "Выбор XLS-файла поставки для загрузки в SelsUp."
+      },
+      {
+        title: "Проверить карточку поставки в SelsUp",
+        why: "Перед связкой с WB нужно убедиться, что поставка создана в правильном месте и будет списываться с нужного склада.",
+        action:
+          "Откройте созданную поставку. Проверьте маркетплейс WB, юрлицо и склад списания. В базовом сценарии склад списания — «Общий склад с товарами». Если по задаче нужен другой фактический склад, выберите его вручную. Если по умолчанию стоит «Коледино», не оставляйте его случайно: склад должен совпадать с текущей поставкой.",
+        result: "Открыта правильная поставка, склад и основные поля проверены.",
+        image: "./assets/wb_supply_02_selsup_order.png",
+        caption: "Карточка поставки SelsUp с полями склада, маркетплейса и переходом дальше."
+      },
+      {
+        title: "Создать или открыть поставку в WB",
+        why: "SelsUp и WB должны говорить об одной и той же поставке. Для этого нужен номер WB.",
+        action:
+          "На портале WB откройте раздел поставок и найдите поставку, созданную менеджером, либо создайте новую по процессу WB. Загрузите XLS с товарами, выберите склад, тип поставки и дату. Запомните дату: ее нужно повторить в SelsUp и позже сверить с датой СДЭК. Скопируйте только цифры номера поставки WB в верхней части экрана.",
+        result: "В WB есть поставка с товарами, выбранными складом и датой, а ее номер скопирован без лишнего текста.",
+        image: "./assets/wb_supply_04_wb_goods.png",
+        caption: "Экран WB, где загружается XLS и проверяется состав поставки."
+      },
+      {
+        title: "Связать номер WB с SelsUp",
+        why: "Поле «Внешний номер» связывает заказ SelsUp с поставкой на WB. Без него дальнейшая упаковка и документы будут расходиться.",
+        action:
+          "Вернитесь в SelsUp. Вставьте номер WB в поле «Внешний номер», поставьте дату как в WB, выберите юрлицо «ИП Андреев Никита Алексеевич». Название можно сократить до города поставки. Нажмите «Сохранить». После сохранения должна появиться кнопка «Перейти к упаковке» или следующий шаг процесса.",
+        result: "Номер WB сохранен в SelsUp, поставка связана и готова к упаковке.",
+        image: "./assets/wb_supply_03_external_number.png",
+        caption: "Заполнение внешнего номера WB и сохранение поставки в SelsUp."
+      },
+      {
+        title: "Сгенерировать ШК коробов в WB",
+        why: "Каждый физический короб должен получить свой штрихкод короба. По нему SelsUp поймет, какие товары лежат внутри.",
+        action:
+          "В WB откройте «Упаковка и печать ШК». Укажите фактическое количество коробов и сгенерируйте ШК. Если позже окажутся лишние пустые короба, их нужно удалить в WB через меню с тремя точками.",
+        result: "В WB создан список коробов с отдельными ШК для каждого короба.",
+        image: "./assets/wb_supply_06_box_barcodes.png",
+        caption: "Список коробов WB, кнопки скачивания Excel и печати."
+      },
+      {
+        title: "Распечатать ШК коробов",
+        why: "Ошибки на этом шаге приводят к перепутанным коробам при приемке и сканировании.",
+        action:
+          "В настройках печати выберите тип «Штрихкод», бумагу «Термо наклейка», размер 58x40. Печатайте на принтере 360, 2 копии, горизонтальная ориентация. На каждый короб наклейте 2 одинаковых ШК короба и подпишите короба по порядку: 1, 2, 3 и дальше. Не закрывайте штрихкоды скотчем.",
+        result: "Все короба подписаны и имеют по два читаемых ШК короба.",
+        image: "./assets/wb_supply_05_print_settings.png",
+        caption: "Настройки печати термонаклейки 58x40 для ШК коробов."
+      },
+      {
+        title: "Загрузить ШК коробов в SelsUp",
+        why: "SelsUp должен знать список коробов WB, чтобы оператор мог сканировать короб и товары внутри него.",
+        action:
+          "Скачайте XLS со штрихкодами коробов из WB. В SelsUp откройте поставку, перейдите на вкладку «ШК коробов» и загрузите этот файл. Затем откройте «Задания» → «Упаковка» или нажмите «Перейти к упаковке».",
+        result: "SelsUp видит ШК коробов, открыт экран упаковки.",
+        image: "./assets/wb_supply_06_box_barcodes.png",
+        caption: "Файл ШК коробов скачивается из WB и затем загружается в SelsUp."
+      },
+      {
+        title: "Сканировать короб и товары",
+        why: "Здесь чаще всего путают ШК короба и ШК поставки. Сначала всегда сканируется именно ШК короба.",
+        action:
+          "Разбудите сканер одним нажатием. Отсканируйте ШК короба в верхнее поле, нажмите Enter, если поле не перешло дальше само. Затем сканируйте товар, введите количество и верните курсор в начальное верхнее поле перед следующим товаром. После заполнения короба заклейте его и переходите к следующему коробу.",
+        result: "В SelsUp по каждому коробу указаны правильные товары и количества.",
+        image: "./assets/wb_supply_07_selsup_scan.png",
+        caption: "Экран упаковки SelsUp: сначала ШК короба, затем товар и количество."
+      },
+      {
+        title: "Загрузить распределение коробов обратно в WB",
+        why: "WB должен получить не просто список коробов, а распределение: какие баркоды и сколько штук лежат в каждом коробе.",
+        action:
+          "После упаковки всех товаров вернитесь в SelsUp в заказ на отгрузку и скачайте Excel через «ШК коробов» со стрелкой вниз. В WB откройте «Упаковка и печать ШК» → «Через Excel» → «Загрузить через Excel», выберите файл и подтвердите обновление коробов.",
+        result: "В WB обновлены короба, справа видны баркоды и количество штук по каждому коробу.",
+        image: "./assets/wb_supply_06_box_barcodes.png",
+        caption: "Загрузка Excel с распределением товаров по коробам обратно в WB."
+      },
+      {
+        title: "Проверить упаковку в WB",
+        why: "До пропуска нужно поймать расхождения: лишние пустые короба, неверное количество баркодов или штук.",
+        action:
+          "Сверьте верхний счетчик упакованных коробов, баркодов и штук. Откройте несколько коробов и проверьте, что внутри есть товары. Если в WB остались пустые лишние короба, удалите их вручную через три точки.",
+        result: "Количество коробов и товаров в WB совпадает с фактической упаковкой.",
+        image: "./assets/wb_supply_06_box_barcodes.png",
+        caption: "Финальная проверка коробов и количества товаров в WB."
+      },
+      {
+        title: "Заполнить пропуск WB",
+        why: "В пропуске фиксируется способ отгрузки и печатается ШК поставки, который клеится отдельно от ШК короба.",
+        action:
+          "Если в поставке до 10 коробов включительно, выберите способ отгрузки «отдельные короба». Если больше 10 коробов, выберите «на палете». Для стандартных коробов 60x40x40 считайте палеты так: 11-16 коробов — 1 палета, 17-32 — 2 палеты, дальше по 16 коробов на палету. Способ доставки — транспортной компанией, время — с 12 до 18. Распечатайте ШК поставки по одному на каждый короб и не заклеивайте его скотчем.",
+        result: "Пропуск сохранен, способ отгрузки выбран правильно, ШК поставки распечатаны.",
+        image: "./assets/wb_supply_08_pass_print.png",
+        caption: "Печать ШК поставки из раздела пропуска WB."
+      },
+      {
+        title: "Оформить СДЭК и завершить поставку",
+        why: "Количество грузовых мест в СДЭК должно совпасть с количеством коробов, а дата WB — с датой доставки на маркетплейс.",
+        action:
+          "В СДЭК найдите похожий заказ по нужному городу, скопируйте его и вставьте номер поставки WB в поле номера заказа на маркетплейсе. Оставьте одно грузовое место как шаблон: 60x40x40, вес около 17 кг, номер места 1. Скопируйте грузовое место до количества коробов. Если не успеваете сдать груз до 17:00, выбирайте дату следующего дня. Напечатайте ШК СДЭК в формате A16 на принтере 420 и наклейте место 1 на короб 1, место 2 на короб 2 и так далее. В SelsUp нажимайте «Следующий шаг» до статуса «Отгружен», а в WB перенесите дату поставки на дату доставки СДЭК.",
+        result: "Количество мест в СДЭК совпадает с коробами, этикетки наклеены по номерам, SelsUp и WB доведены до финального состояния.",
+        image: "./assets/wb_supply_08_pass_print.png",
+        caption: "После пропуска остаются оформление СДЭК, финальный статус SelsUp и дата WB."
+      }
+    ],
+    checklist: [
+      "XLS поставки загружен в SelsUp, а не перепутан с файлом ШК коробов.",
+      "В WB открыта правильная поставка, номер скопирован только цифрами.",
+      "В SelsUp заполнен «Внешний номер», дата, юрлицо и фактический склад.",
+      "Сгенерировано ровно фактическое количество коробов.",
+      "На каждом коробе есть 2 ШК короба, короб подписан номером, штрихкод не закрыт скотчем.",
+      "При упаковке сначала сканируется ШК короба, затем ШК товара и количество.",
+      "Excel с распределением коробов из SelsUp загружен обратно в WB.",
+      "В WB нет пустых лишних коробов, счетчики коробов, баркодов и штук сходятся.",
+      "До 10 коробов включительно выбран способ «отдельные короба», больше 10 — «на палете».",
+      "Количество грузовых мест в СДЭК равно количеству коробов, дата WB перенесена на дату доставки СДЭК."
+    ],
+    issues: [
+      {
+        title: "Перепутали ШК короба и ШК поставки",
+        text: "Для упаковки в SelsUp первым сканируется ШК короба. ШК поставки печатается из пропуска и клеится отдельно по одному на каждый короб."
+      },
+      {
+        title: "Оставили случайный склад",
+        text: "Если по умолчанию стоит «Коледино», проверьте задачу. Склад должен соответствовать фактической поставке."
+      },
+      {
+        title: "Неверно выбрали короб или палету",
+        text: "До 10 коробов включительно — «отдельные короба». Больше 10 — «на палете». Для коробов 60x40x40 считайте по 16 коробов на палету."
+      },
+      {
+        title: "Не вернули Excel с упаковкой в WB",
+        text: "После сканирования в SelsUp обязательно скачайте «ШК коробов» и загрузите файл в WB через Excel, иначе WB не увидит распределение товаров по коробам."
+      },
+      {
+        title: "СДЭК не совпал с коробами",
+        text: "Количество грузовых мест в СДЭК должно быть равно количеству коробов. Этикетки клеятся строго по номерам: место 1 на короб 1."
+      },
+      {
+        title: "Дата изменилась после оформления",
+        text: "Если поменялась дата WB, СДЭК или пропуск, вернитесь и синхронизируйте дату во всех местах: WB, SelsUp и заказ СДЭК."
+      }
+    ]
+  },
+  {
+    id: "merge-supply-card",
+    topic: "Честный знак и Selsup",
+    title: "Объединение в одну карточку для поставки",
+    description:
+      "Как в заказе на отгрузку Selsup проверить колонку «Артикул для объединения в одну карточку» и убедиться, что лист сборки сформирован правильно.",
+    role: "Склад / оператор",
+    duration: "1-2 минуты",
+    sourceVideo: "./videos/merge-supply-card.mp4",
+    videoNote:
+      "Исходный ролик длится около 43 секунд. Его стоит открыть, если нужно быстро сверить, какие строки выбрать перед объединением.",
+    keywords: [
+      "карточки",
+      "поставка",
+      "объединение",
+      "одна карточка",
+      "товар",
+      "варианты",
+      "выбрать строки",
+      "заказ на отгрузку",
+      "лист сборки",
+      "артикул для объединения",
+      "wildberries",
+      "инструкция"
+    ],
+    steps: [
+      {
+        title: "Открыть заказ на отгрузку",
+        why: "Объединение карточек проверяется внутри конкретного заказа на отгрузку, где собрана поставка.",
+        action:
+          "В Selsup откройте раздел «Заказы на отгрузку» и перейдите в нужный заказ. Проверьте склад, маркетплейс, внешний номер и блок «Планирование поставок».",
+        result: "Открыт правильный заказ, в котором видна таблица товаров поставки.",
+        image: "./assets/merge_supply_01_order.png",
+        caption: "Заказ на отгрузку и блок планирования поставок."
+      },
+      {
+        title: "Найти таблицу товаров поставки",
+        why: "Все дальнейшие проверки выполняются по строкам таблицы: в ней видны товары, количество, штрихкод и данные для объединения.",
+        action:
+          "Прокрутите заказ до таблицы в блоке «Планирование поставок». Найдите строки товаров и колонку «Артикул для объединения в одну карточку».",
+        result: "Вы видите, по каким строкам будет формироваться одна карточка в листе сборки.",
+        image: "./assets/merge_supply_02_table.png",
+        caption: "Таблица товаров поставки и колонка объединения."
+      },
+      {
+        title: "Проверить артикул для объединения",
+        why: "Одинаковое значение в этой колонке означает, что позиции будут собраны в одну карточку при печати/сборке.",
+        action:
+          "Сравните значение в колонке «Артикул для объединения в одну карточку» у связанных строк. Для вариантов одного товара значение должно совпадать.",
+        result: "Связанные позиции имеют одинаковый артикул объединения, а разные товары не смешиваются между собой.",
+        image: "./assets/merge_supply_03_article_column.png",
+        caption: "Колонка, которая определяет объединение строк в одну карточку."
+      },
+      {
+        title: "Сверить группы товаров",
+        why: "Перед печатью важно убедиться, что однотипные товары сгруппированы правильно, а случайные строки не попали в чужую группу.",
+        action:
+          "Просмотрите несколько строк поставки: название, размер, количество и артикул объединения. Не удаляйте строки без проверки группы.",
+        result: "Понятно, какие строки будут объединены, и в таблице нет очевидного смешения разных товаров.",
+        image: "./assets/merge_supply_04_groups.png",
+        caption: "Сверка названий товаров и артикулов группировки."
+      },
+      {
+        title: "Проверить лист сборки",
+        why: "Лист сборки показывает итог: как товары попадут в печатную форму для сборки поставки.",
+        action:
+          "Нажмите «Лист сборки» и проверьте PDF: заказ, товар, штрихкоды и количество к отгрузке должны соответствовать таблице.",
+        result: "Лист сборки сформирован корректно, поставку можно передавать дальше в работу.",
+        image: "./assets/merge_supply_05_print_list.png",
+        caption: "Печатный лист сборки после проверки объединения карточек."
+      }
+    ],
+    checklist: [
+      "Открыт правильный заказ на отгрузку.",
+      "В таблице найден столбец «Артикул для объединения в одну карточку».",
+      "У вариантов одного товара одинаковое значение артикула объединения.",
+      "Разные товары не объединены одним случайным значением.",
+      "Лист сборки открыт и визуально совпадает с таблицей поставки."
+    ],
+    issues: [
+      {
+        title: "Одинаковый артикул у разных товаров",
+        text: "Если в колонке объединения одинаковое значение стоит у разных товаров, они могут попасть в одну карточку ошибочно. Проверьте строки до печати листа сборки."
+      },
+      {
+        title: "Связанные варианты не объединяются",
+        text: "Если варианты одного товара имеют разные значения в колонке объединения, они попадут в лист сборки раздельно."
+      },
+      {
+        title: "Не тот заказ",
+        text: "Перед проверкой убедитесь, что открыт нужный заказ на отгрузку, правильный склад и маркетплейс."
+      },
+      {
+        title: "Лист сборки не совпадает",
+        text: "Если PDF не совпадает с таблицей, вернитесь в заказ, проверьте артикулы объединения и сформируйте лист сборки повторно."
+      }
+    ]
+  },
+  {
+    id: "selsup-honest-sign-base",
+    topic: "Честный знак и Selsup",
+    title: "Публикация карточек и обновление связей в Selsup",
+    description:
+      "Базовый учебный материал по работе с карточками Честного знака: публикация, проверка статуса, связь с товаром и контроль результата.",
+    role: "Оператор / менеджер товара",
+    duration: "10-15 минут",
+    sourceVideo: "./videos/honest-sign-base.mp4",
+    videoNote:
+      "Это исходное видео предыдущего учебного материала. Его можно открыть, если нужно сверить детали с демонстрацией на экране.",
+    keywords: [
+      "честный знак",
+      "selsup",
+      "карточки товара",
+      "публикация",
+      "статус",
+      "интеграция",
+      "токен",
+      "национальный каталог",
+      "связать карточки",
+      "товар",
+      "инструкция"
+    ],
+    steps: [
+      {
+        title: "Открыть товар и панель действий",
+        why: "Работу начинают с нужного товара, чтобы дальнейшие действия относились к правильной карточке.",
+        action: "Откройте товар в Selsup и проверьте доступность панели действий по карточкам.",
+        result: "Товар открыт, действия по карточкам доступны.",
+        image: "./assets/01_product_toolbar.png",
+        caption: "Панель действий в карточке товара."
+      },
+      {
+        title: "Проверить настройки при ошибке",
+        why: "Если карточки не подтягиваются, часто причина связана с настройками интеграции или доступом.",
+        action: "Перейдите в настройки и проверьте блок, связанный с Честным знаком.",
+        result: "Понятно, какие настройки мешают обновлению карточек.",
+        image: "./assets/02_error_settings.png",
+        caption: "Экран проверки настроек при ошибке."
+      },
+      {
+        title: "Открыть раздел интеграций",
+        why: "Интеграция отвечает за обмен данными между Selsup и Честным знаком.",
+        action: "В настройках откройте раздел интеграций и найдите подключение Честного знака.",
+        result: "Нужная интеграция найдена и готова к проверке.",
+        image: "./assets/03_integrations.png",
+        caption: "Список интеграций в Selsup."
+      },
+      {
+        title: "Обновить токен доступа",
+        why: "Актуальный токен нужен, чтобы Selsup мог получить данные карточек из Честного знака.",
+        action: "Получите новый токен на рабочем месте с электронной подписью и сохраните настройки.",
+        result: "Токен получен и сохранён.",
+        image: "./assets/04_token.png",
+        caption: "Получение и сохранение токена."
+      },
+      {
+        title: "Повторить операцию по карточкам",
+        why: "После обновления доступа нужно снова запустить действие, которое ранее не выполнилось.",
+        action: "Вернитесь к товару и повторите поиск или связывание карточек национального каталога.",
+        result: "Операция завершилась успешно.",
+        image: "./assets/05_success.png",
+        caption: "Успешное выполнение операции."
+      },
+      {
+        title: "Проверить итоговый статус",
+        why: "Финальная проверка нужна, чтобы убедиться, что карточки действительно обновились.",
+        action: "Проверьте таблицу статусов и убедитесь, что карточки готовы к дальнейшей работе.",
+        result: "Статусы в таблице подтверждают готовность карточек.",
+        image: "./assets/06_status_table.png",
+        caption: "Итоговая таблица статусов."
+      }
+    ],
+    checklist: [
+      "Открыт правильный товар в Selsup.",
+      "Проверены настройки интеграции Честного знака.",
+      "Токен доступа получен и сохранён.",
+      "Операция поиска или связывания карточек повторена.",
+      "Итоговый статус карточек проверен в таблице."
+    ],
+    issues: [
+      {
+        title: "Не выбран нужный товар",
+        text: "Перед операцией убедитесь, что открыта именно та карточка товара, по которой нужно обновить данные Честного знака."
+      },
+      {
+        title: "Токен устарел",
+        text: "Если Selsup не может подтянуть карточки, обновите токен в интеграции Честного знака и сохраните настройки."
+      },
+      {
+        title: "Нет электронной подписи",
+        text: "Некоторые действия выполняются только с рабочего места, где доступна электронная подпись."
+      },
+      {
+        title: "Статус не изменился сразу",
+        text: "После запуска операции подождите немного и обновите страницу товара, затем проверьте таблицу статусов повторно."
+      }
+    ]
+  }
+];
+
+const synonyms = {
+  "эцп": ["подпись", "цифровая подпись", "электронная подпись"],
+  "токен": ["интеграция", "доступ", "получить токен"],
+  "поставка": ["карточка", "карточки", "товар"],
+  "ошибка": ["не получилось", "позже", "сбой"],
+  "видео": ["ролик", "исходник", "исходное видео"],
+  "wb": ["вб", "wildberries", "вайлдберриз"],
+  "вб": ["wb", "wildberries", "вайлдберриз"],
+  "сдэк": ["cdek", "транспортная компания", "доставка"],
+  "шк": ["штрихкод", "баркод", "шк коробов", "шк поставки"],
+  "короба": ["короб", "упаковка", "палета", "грузовое место"],
+  "палета": ["паллет", "поддон", "больше 10 коробов"]
+};
+
+const state = {
+  selectedMaterialId: materials[0].id,
+  currentStep: 0,
+  currentView: "guide",
+  currentIssue: 0,
+  query: "",
+  completed: {},
+  mode: "library"
+};
+
+const nodes = {
+  appShell: document.querySelector(".app-shell"),
+  sidebarToggle: document.querySelector("#sidebar-toggle"),
+  sidebarRestore: document.querySelector("#sidebar-restore"),
+  topicList: document.querySelector("#topic-list"),
+  materialList: document.querySelector("#material-list"),
+  searchInput: document.querySelector("#search-input"),
+  matchCount: document.querySelector("#match-count"),
+  materialsCount: document.querySelector("#materials-count"),
+  stepsCount: document.querySelector("#steps-count"),
+  videosCount: document.querySelector("#videos-count"),
+  lessonTopic: document.querySelector("#lesson-topic"),
+  lessonTitle: document.querySelector("#lesson-title"),
+  lessonDescription: document.querySelector("#lesson-description"),
+  lessonMeta: document.querySelector("#lesson-meta"),
+  keywordRow: document.querySelector("#keyword-row"),
+  viewTabs: document.querySelectorAll(".view-tab"),
+  views: {
+    guide: document.querySelector("#guide-view"),
+    check: document.querySelector("#check-view"),
+    issues: document.querySelector("#issues-view"),
+    video: document.querySelector("#video-view")
+  },
+  processStrip: document.querySelector("#process-strip"),
+  prevStep: document.querySelector("#prev-step"),
+  nextStep: document.querySelector("#next-step"),
+  stepKicker: document.querySelector("#step-kicker"),
+  stepTitle: document.querySelector("#step-title"),
+  stepWhy: document.querySelector("#step-why"),
+  stepAction: document.querySelector("#step-action"),
+  stepResult: document.querySelector("#step-result"),
+  stepImage: document.querySelector("#step-image"),
+  stepCaption: document.querySelector("#step-caption"),
+  stepComplete: document.querySelector("#step-complete"),
+  screenshotZoom: document.querySelector("#screenshot-zoom"),
+  lightbox: document.querySelector("#image-lightbox"),
+  lightboxImage: document.querySelector("#lightbox-image"),
+  lightboxCaption: document.querySelector("#lightbox-caption"),
+  lightboxClose: document.querySelector("#lightbox-close"),
+  checklist: document.querySelector("#checklist"),
+  mistakeGrid: document.querySelector("#mistake-grid"),
+  mistakeDetail: document.querySelector("#mistake-detail"),
+  sourceVideo: document.querySelector("#source-video"),
+  videoTitle: document.querySelector("#video-title"),
+  videoNote: document.querySelector("#video-note"),
+  videoLink: document.querySelector("#video-link"),
+  libraryLayout: document.querySelector("#library-layout"),
+  developLayout: document.querySelector("#develop-layout"),
+  modeButtons: document.querySelectorAll(".mode-btn"),
+  sidebarSections: {
+    search: document.querySelector(".search-box"),
+    topics: document.querySelector(".topic-list"),
+    materials: document.querySelector(".rail-materials"),
+    devLink: document.querySelector(".dev-link-card"),
+    searchStatus: document.querySelector(".status-card")
+  }
+};
+
+function normalize(value) {
+  return value.toLowerCase().replaceAll("ё", "е").trim();
+}
+
+function searchTerms(query) {
+  const base = normalize(query)
+    .split(/[\s,.;:!?]+/)
+    .filter((term) => term.length > 1);
+
+  return [...new Set(base.flatMap((term) => [term, ...(synonyms[term] || []).map(normalize)]))];
+}
+
+function materialText(material) {
+  return normalize(
+    [
+      material.topic,
+      material.title,
+      material.description,
+      material.role,
+      material.duration,
+      material.keywords.join(" "),
+      material.steps.map((step) => `${step.title} ${step.why} ${step.action} ${step.result}`).join(" "),
+      material.checklist.join(" "),
+      material.issues.map((issue) => `${issue.title} ${issue.text}`).join(" ")
+    ].join(" ")
+  );
+}
+
+function scoreMaterial(material, query) {
+  const terms = searchTerms(query);
+  if (!terms.length) return 1;
+
+  const haystack = materialText(material);
+  const title = normalize(`${material.topic} ${material.title} ${material.keywords.join(" ")}`);
+  return terms.reduce((score, term) => {
+    if (title.includes(term)) return score + 4;
+    if (haystack.includes(term)) return score + 1;
+    return score;
+  }, 0);
+}
+
+function filteredMaterials() {
+  return materials
+    .map((material) => ({ material, score: scoreMaterial(material, state.query) }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.material);
+}
+
+function selectedMaterial() {
+  return materials.find((material) => material.id === state.selectedMaterialId) || materials[0];
+}
+
+function completedSet(materialId = state.selectedMaterialId) {
+  if (!state.completed[materialId]) {
+    state.completed[materialId] = new Set();
+  }
+  return state.completed[materialId];
+}
+
+function renderTopics(items) {
+  const topics = [...new Set(materials.map((material) => material.topic))];
+  nodes.topicList.innerHTML = topics
+    .map((topic) => {
+      const count = items.filter((material) => material.topic === topic).length;
+      const active = selectedMaterial().topic === topic ? " is-active" : "";
+      return `<button class="topic-button${active}" type="button" data-topic="${topic}">
+        <span>${topic}</span><strong>${count}</strong>
+      </button>`;
+    })
+    .join("");
+
+  nodes.topicList.querySelectorAll(".topic-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const firstInTopic = materials.find((material) => material.topic === button.dataset.topic);
+      if (firstInTopic) selectMaterial(firstInTopic.id);
+    });
+  });
+}
+
+function renderMaterialList(items) {
+  if (!items.length) {
+    nodes.materialList.innerHTML = `<div class="empty-state">По такому запросу пока ничего не найдено.</div>`;
+    return;
+  }
+
+  nodes.materialList.innerHTML = items
+    .map((material) => {
+      const active = material.id === state.selectedMaterialId ? " is-active" : "";
+      return `<button class="material-card${active}" type="button" data-material="${material.id}">
+        <strong>${material.title}</strong>
+        <small>${material.steps.length} шагов · ${material.duration}</small>
+      </button>`;
+    })
+    .join("");
+
+  nodes.materialList.querySelectorAll(".material-card").forEach((button) => {
+    button.addEventListener("click", () => selectMaterial(button.dataset.material));
+  });
+}
+
+function renderLesson() {
+  const material = selectedMaterial();
+  const step = material.steps[state.currentStep] || material.steps[0];
+
+  nodes.lessonTopic.textContent = material.topic;
+  nodes.lessonTitle.textContent = material.title;
+  nodes.lessonDescription.textContent = material.description;
+  const doneCount = completedSet(material.id).size;
+  nodes.lessonMeta.innerHTML = `<span>Роль: ${material.role}</span><span>Время: ${material.duration}</span><span>Понятно: ${doneCount}/${material.steps.length}</span>`;
+  const tags = [...new Set([...material.keywords, "Инструкция", "Контроль", "Ошибки", "Исходное видео"])];
+  nodes.keywordRow.innerHTML = tags.map((keyword) => `<span>${keyword}</span>`).join("");
+
+  nodes.processStrip.innerHTML = material.steps
+    .map((item, index) => {
+      const active = index === state.currentStep ? " is-active" : "";
+      const number = String(index + 1).padStart(2, "0");
+      return `<button class="process-step${active}" type="button" data-step="${index}">
+        <span>${number}</span><strong>${item.title}</strong>
+      </button>`;
+    })
+    .join("");
+
+  nodes.processStrip.querySelectorAll(".process-step").forEach((button) => {
+    button.addEventListener("click", () => setStep(Number(button.dataset.step)));
+  });
+
+  nodes.stepKicker.textContent = `Шаг ${state.currentStep + 1} из ${material.steps.length}`;
+  nodes.stepTitle.textContent = step.title;
+  nodes.stepWhy.textContent = step.why;
+  nodes.stepAction.textContent = step.action;
+  nodes.stepResult.textContent = step.result;
+  nodes.stepImage.src = step.image;
+  nodes.stepImage.alt = `Скриншот: ${step.title}`;
+  nodes.stepCaption.textContent = step.caption;
+  nodes.stepComplete.checked = completedSet(material.id).has(state.currentStep);
+
+  nodes.checklist.innerHTML = material.checklist
+    .map((item) => `<label><input type="checkbox" /><span>${item}</span></label>`)
+    .join("");
+
+  nodes.mistakeGrid.innerHTML = material.issues
+    .map((issue, index) => {
+      const active = index === state.currentIssue ? " is-active" : "";
+      return `<button class="mistake${active}" type="button" data-issue="${index}">
+        <strong>${issue.title}</strong><span>${issue.text}</span>
+      </button>`;
+    })
+    .join("");
+  nodes.mistakeDetail.textContent = material.issues[state.currentIssue]?.text || "";
+  nodes.mistakeGrid.querySelectorAll(".mistake").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.currentIssue = Number(button.dataset.issue);
+      renderLesson();
+    });
+  });
+
+  nodes.videoTitle.textContent = material.title;
+  nodes.videoNote.textContent = material.videoNote;
+  nodes.videoLink.href = material.sourceVideo;
+  syncVideoSource();
+}
+
+function syncVideoSource() {
+  const material = selectedMaterial();
+  if (state.currentView === "video") {
+    if (nodes.sourceVideo.getAttribute("src") !== material.sourceVideo) {
+      nodes.sourceVideo.src = material.sourceVideo;
+      nodes.sourceVideo.load();
+    }
+    return;
+  }
+
+  nodes.sourceVideo.pause();
+  nodes.sourceVideo.removeAttribute("src");
+  nodes.sourceVideo.load();
+}
+
+function renderShell() {
+  const items = filteredMaterials();
+  nodes.matchCount.textContent = String(items.length);
+  nodes.materialsCount.textContent = String(materials.length);
+  nodes.stepsCount.textContent = String(materials.reduce((sum, material) => sum + material.steps.length, 0));
+  nodes.videosCount.textContent = String(materials.filter((material) => material.sourceVideo).length);
+  renderTopics(items);
+  renderMaterialList(items);
+}
+
+function setStep(index) {
+  const material = selectedMaterial();
+  state.currentStep = Math.max(0, Math.min(material.steps.length - 1, index));
+  renderLesson();
+}
+
+function selectMaterial(id) {
+  state.selectedMaterialId = id;
+  state.currentStep = 0;
+  state.currentIssue = 0;
+  renderShell();
+  renderLesson();
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  const isLibrary = mode === "library";
+  nodes.libraryLayout.classList.toggle("hidden", !isLibrary);
+  nodes.developLayout.classList.toggle("hidden", isLibrary);
+  document.querySelector(".topbar").classList.toggle("hidden", !isLibrary);
+  nodes.modeButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.mode === mode);
+  });
+  Object.values(nodes.sidebarSections).forEach((node) => {
+    if (node) node.classList.toggle("hidden", !isLibrary);
+  });
+  if (!isLibrary) {
+    nodes.sourceVideo.pause();
+    syncDevelopFrame();
+  } else {
+    syncVideoSource();
+  }
+}
+
+function syncDevelopFrame() {
+  const frame = document.querySelector("#develop-frame");
+  const note = document.querySelector("#develop-note");
+  if (!frame) return;
+  const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  if (isLocal) {
+    frame.src = frame.dataset.localSrc || "http://127.0.0.1:8765/";
+    frame.classList.remove("hidden");
+    note?.classList.add("hidden");
+    return;
+  }
+  frame.removeAttribute("src");
+  frame.classList.add("hidden");
+  note?.classList.remove("hidden");
+}
+
+nodes.modeButtons.forEach((button) => {
+  button.addEventListener("click", () => setMode(button.dataset.mode));
+});
+
+function setView(view) {
+  state.currentView = view;
+  nodes.viewTabs.forEach((tab) => {
+    const active = tab.dataset.view === view;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+  });
+  Object.entries(nodes.views).forEach(([name, node]) => {
+    node.classList.toggle("is-active", name === view);
+  });
+  syncVideoSource();
+}
+
+nodes.searchInput.addEventListener("input", (event) => {
+  state.query = event.target.value;
+  const items = filteredMaterials();
+  if (items.length && !items.some((material) => material.id === state.selectedMaterialId)) {
+    state.selectedMaterialId = items[0].id;
+    state.currentStep = 0;
+  }
+  renderShell();
+  renderLesson();
+});
+
+nodes.viewTabs.forEach((tab) => {
+  tab.addEventListener("click", () => setView(tab.dataset.view));
+});
+
+nodes.prevStep.addEventListener("click", () => setStep(state.currentStep - 1));
+nodes.nextStep.addEventListener("click", () => setStep(state.currentStep + 1));
+
+nodes.stepComplete.addEventListener("change", () => {
+  const set = completedSet();
+  if (nodes.stepComplete.checked) {
+    set.add(state.currentStep);
+  } else {
+    set.delete(state.currentStep);
+  }
+  renderLesson();
+});
+
+nodes.screenshotZoom.addEventListener("click", () => {
+  nodes.lightboxImage.src = nodes.stepImage.src;
+  nodes.lightboxImage.alt = nodes.stepImage.alt;
+  nodes.lightboxCaption.textContent = nodes.stepCaption.textContent;
+  nodes.lightbox.hidden = false;
+});
+
+nodes.lightboxClose.addEventListener("click", () => {
+  nodes.lightbox.hidden = true;
+});
+
+nodes.lightbox.addEventListener("click", (event) => {
+  if (event.target === nodes.lightbox) {
+    nodes.lightbox.hidden = true;
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !nodes.lightbox.hidden) {
+    nodes.lightbox.hidden = true;
+  }
+});
+
+function setSidebarCollapsed(collapsed) {
+  nodes.appShell.classList.toggle("is-sidebar-collapsed", collapsed);
+  nodes.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+}
+
+nodes.sidebarToggle.addEventListener("click", () => setSidebarCollapsed(true));
+nodes.sidebarRestore.addEventListener("click", () => setSidebarCollapsed(false));
+
+renderShell();
+renderLesson();
+setView("guide");
+setMode("library");

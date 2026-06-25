@@ -1,0 +1,413 @@
+:root {
+  --ink: #17202a;
+  --muted: #65717f;
+  --line: #d8e0e8;
+  --surface: #ffffff;
+  --soft: #f4f7fa;
+  --blue: #2468a6;
+  --blue-dark: #163f68;
+  --cyan: #15899a;
+  --shadow: 0 14px 30px rgba(23, 32, 42, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: var(--ink);
+  background: #eef2f6;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+.sidebar {
+  background: #15283b;
+  color: #fff;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brand {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #21a2b3;
+  font-weight: 900;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #7fd3df;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.back-link {
+  color: #d7e4ef;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.primary-btn,
+.secondary-btn,
+.ghost-btn,
+.tool-btn {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 10px 14px;
+  font-weight: 600;
+}
+
+.primary-btn {
+  background: var(--blue);
+  color: #fff;
+}
+
+.secondary-btn {
+  background: #fff;
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.ghost-btn,
+.tool-btn {
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.tool-btn.is-active {
+  background: #e7f1fa;
+  border-color: #9ec3e6;
+  color: var(--blue-dark);
+}
+
+.section-label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 42vh;
+  overflow: auto;
+}
+
+.project-item {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.project-item.is-active {
+  background: rgba(33, 162, 179, 0.22);
+  border-color: rgba(127, 211, 223, 0.55);
+}
+
+.project-item small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.hint-card {
+  margin-top: auto;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hint-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.workspace {
+  padding: 22px;
+}
+
+.empty-state,
+.editor {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.empty-state {
+  padding: 48px 28px;
+  text-align: center;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.editor {
+  padding: 20px;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.title-input {
+  width: min(640px, 100%);
+  border: none;
+  font-size: 28px;
+  font-weight: 700;
+  padding: 0;
+  color: var(--ink);
+}
+
+.title-input:focus {
+  outline: none;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.meta-grid label,
+.step-fields label,
+.frame-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.meta-grid input,
+.meta-grid textarea,
+.step-fields input,
+.step-fields textarea,
+.frame-picker select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft);
+  padding: 16px;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e7f1fa;
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-text {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.upload-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.step-card-btn {
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.step-card-btn.is-active {
+  border-color: #9ec3e6;
+  background: #eef6fd;
+}
+
+.step-card-btn strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.step-card-btn span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.step-fields {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.frame-picker {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.canvas-wrap {
+  background: #101820;
+  border-radius: 12px;
+  padding: 10px;
+  overflow: auto;
+}
+
+#annotation-canvas {
+  display: block;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  cursor: crosshair;
+}
+
+.canvas-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+dialog {
+  border: none;
+  border-radius: 12px;
+  padding: 18px;
+  width: min(760px, 92vw);
+  box-shadow: var(--shadow);
+}
+
+dialog textarea {
+  width: 100%;
+  margin-top: 10px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+
+dialog menu {
+  display: flex;
+  justify-content: end;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+@media (max-width: 1100px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .editor-grid,
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+}

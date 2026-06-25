@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Разработка урока — X-active</title>
+    <link rel="stylesheet" href="/static/builder.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">XA</div>
+          <div>
+            <p class="eyebrow">Инструмент</p>
+            <h1>Разработка урока</h1>
+          </div>
+        </div>
+
+        <a class="back-link" href="http://127.0.0.1:8000/" target="_blank" rel="noreferrer">← Учебный центр</a>
+
+        <button class="primary-btn" id="new-project" type="button">+ Новый проект</button>
+
+        <div class="project-list-wrap">
+          <p class="section-label">Проекты</p>
+          <div class="project-list" id="project-list"></div>
+        </div>
+
+        <div class="hint-card">
+          <strong>Как работает</strong>
+          <p>Загрузите видео → получите шаги и скриншоты → отметьте экран → экспортируйте HTML или PDF.</p>
+        </div>
+      </aside>
+
+      <main class="workspace" id="workspace">
+        <section class="empty-state" id="empty-state">
+          <h2>Выберите или создайте проект</h2>
+          <p>Инструмент работает локально. Все файлы сохраняются в папке <code>lesson_builder/projects</code>.</p>
+        </section>
+
+        <section class="editor hidden" id="editor">
+          <header class="editor-header">
+            <div>
+              <p class="eyebrow" id="project-topic">Тема</p>
+              <input class="title-input" id="project-title" type="text" placeholder="Название урока" />
+            </div>
+            <div class="header-actions">
+              <button class="ghost-btn" id="export-html" type="button">HTML</button>
+              <button class="ghost-btn" id="export-pdf" type="button">PDF</button>
+              <button class="ghost-btn" id="export-snippet" type="button">Фрагмент для app.js</button>
+            </div>
+          </header>
+
+          <div class="meta-grid">
+            <label>Тема<input id="field-topic" type="text" /></label>
+            <label>Роль<input id="field-role" type="text" /></label>
+            <label>Описание<textarea id="field-description" rows="2"></textarea></label>
+          </div>
+
+          <section class="panel upload-panel">
+            <div class="panel-head">
+              <h2>1. Видео и обработка</h2>
+              <span class="status-badge" id="project-status">draft</span>
+            </div>
+            <p class="status-text" id="status-message">Загрузите видео.</p>
+            <div class="upload-row">
+              <input id="video-input" type="file" accept="video/*" />
+              <button class="primary-btn" id="upload-video" type="button">Загрузить видео</button>
+              <button class="secondary-btn" id="process-video" type="button">Создать инструкцию из видео</button>
+            </div>
+          </section>
+
+          <div class="editor-grid">
+            <section class="panel steps-panel">
+              <div class="panel-head">
+                <h2>2. Шаги</h2>
+                <span id="steps-count">0</span>
+              </div>
+              <div class="steps-list" id="steps-list"></div>
+            </section>
+
+            <section class="panel step-editor">
+              <div class="panel-head">
+                <h2 id="step-editor-title">Шаг</h2>
+                <div class="toolbar">
+                  <button class="tool-btn" data-tool="select" type="button">Выбор</button>
+                  <button class="tool-btn is-active" data-tool="arrow" type="button">Стрелка</button>
+                  <button class="tool-btn" data-tool="rect" type="button">Рамка</button>
+                  <button class="tool-btn" data-tool="circle" type="button">Круг</button>
+                  <button class="tool-btn" data-tool="text" type="button">Текст</button>
+                  <button class="ghost-btn" id="undo-annotation" type="button">Отмена</button>
+                  <button class="ghost-btn" id="clear-annotations" type="button">Очистить</button>
+                </div>
+              </div>
+
+              <div class="step-fields">
+                <label>Заголовок<input id="step-title" type="text" /></label>
+                <label>Действие<textarea id="step-action" rows="3"></textarea></label>
+                <label>Комментарий<textarea id="step-comment" rows="2"></textarea></label>
+                <label>Готово, если<textarea id="step-result" rows="2"></textarea></label>
+              </div>
+
+              <div class="frame-picker">
+                <label>Заменить скриншот
+                  <select id="frame-select"></select>
+                </label>
+                <button class="secondary-btn" id="apply-frame" type="button">Применить кадр</button>
+              </div>
+
+              <div class="canvas-wrap">
+                <canvas id="annotation-canvas"></canvas>
+              </div>
+              <p class="canvas-hint">Кликните и потяните мышью, чтобы нарисовать стрелку, рамку или круг. Для текста — один клик.</p>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="snippet-dialog">
+      <form method="dialog">
+        <h3>Фрагмент для site/app.js</h3>
+        <p>Скопируйте объект и добавьте в массив <code>materials</code>.</p>
+        <textarea id="snippet-output" rows="16" readonly></textarea>
+        <menu>
+          <button value="cancel" type="submit">Закрыть</button>
+          <button id="copy-snippet" value="default" type="submit">Копировать</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="/static/builder.js"></script>
+  </body>
+</html>

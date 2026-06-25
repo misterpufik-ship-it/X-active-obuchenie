@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Учебный центр X-active</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" id="sidebar" aria-label="Темы обучения">
+        <div class="brand">
+          <div class="brand-mark">XA</div>
+          <div>
+            <p class="eyebrow">Учебная база</p>
+            <h1>X-active обучение</h1>
+          </div>
+          <button class="rail-collapse" id="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar" title="Свернуть меню">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+          </button>
+        </div>
+
+        <nav class="mode-switch" aria-label="Режим работы">
+          <button class="mode-btn is-active" type="button" data-mode="library">Учебная база</button>
+          <button class="mode-btn" type="button" data-mode="develop">Разработка урока</button>
+        </nav>
+
+        <div class="search-box" role="search">
+          <label for="search-input">Поиск по материалам</label>
+          <input id="search-input" type="search" placeholder="Например: токен, карточки, поставка" autocomplete="off" />
+        </div>
+
+        <nav class="topic-list" id="topic-list" aria-label="Оглавление по темам"></nav>
+
+        <section class="rail-materials" aria-label="Список материалов">
+          <div class="rail-title">
+            <span>Материалы</span>
+            <strong id="match-count">0</strong>
+          </div>
+          <div class="material-list" id="material-list"></div>
+        </section>
+
+        <section class="dev-link-card" aria-label="Разработка урока">
+          <span class="status-label">Разработка урока</span>
+          <p class="status-note">Локальный инструмент: видео → шаги → скриншоты → HTML/PDF.</p>
+          <a class="dev-link-btn" href="http://127.0.0.1:8765/" target="_blank" rel="noreferrer">Открыть конструктор</a>
+        </section>
+
+        <div class="status-card">
+          <span class="status-label">Поиск</span>
+          <span class="status-note">Учитывает темы, шаги, ошибки и ключевые слова.</span>
+        </div>
+      </aside>
+
+      <main class="content">
+        <button class="sidebar-restore" id="sidebar-restore" type="button" aria-label="Показать меню" title="Показать меню">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">Учебный центр</p>
+            <h2>Материалы по темам</h2>
+          </div>
+          <div class="summary-strip" aria-label="Сводка учебной базы">
+            <div>
+              <span id="materials-count">0</span>
+              <small>материалов</small>
+            </div>
+            <div>
+              <span id="steps-count">0</span>
+              <small>шагов</small>
+            </div>
+            <div>
+              <span id="videos-count">0</span>
+              <small>видео</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="library-layout" id="library-layout">
+          <article class="lesson-card" id="lesson-card" aria-live="polite">
+            <header class="lesson-header">
+              <div>
+                <p class="eyebrow" id="lesson-topic"></p>
+                <h2 id="lesson-title"></h2>
+                <p id="lesson-description"></p>
+              </div>
+              <div class="lesson-meta" id="lesson-meta"></div>
+            </header>
+
+            <div class="view-tabs" role="tablist" aria-label="Разделы материала">
+              <button class="view-tab is-active" type="button" data-view="guide" role="tab" aria-selected="true">Инструкция</button>
+              <button class="view-tab" type="button" data-view="check" role="tab" aria-selected="false">Контроль</button>
+              <button class="view-tab" type="button" data-view="issues" role="tab" aria-selected="false">Ошибки</button>
+              <button class="view-tab" type="button" data-view="video" role="tab" aria-selected="false">Исходное видео</button>
+            </div>
+
+            <section class="lesson-view is-active" id="guide-view">
+              <div class="process-strip" id="process-strip"></div>
+              <div class="step-toolbar">
+                <button class="icon-button" type="button" id="prev-step" aria-label="Предыдущий шаг" title="Предыдущий шаг">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
+                <div>
+                  <span class="mini-label" id="step-kicker"></span>
+                  <h3 id="step-title"></h3>
+                </div>
+                <button class="icon-button" type="button" id="next-step" aria-label="Следующий шаг" title="Следующий шаг">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </button>
+              </div>
+              <div class="step-panel">
+                <div class="step-copy">
+                  <div class="instruction-grid">
+                    <div>
+                      <span class="mini-label">Зачем</span>
+                      <p id="step-why"></p>
+                    </div>
+                    <div>
+                      <span class="mini-label">Действие</span>
+                      <p id="step-action"></p>
+                    </div>
+                    <div>
+                      <span class="mini-label">Готово, если</span>
+                      <p id="step-result"></p>
+                    </div>
+                  </div>
+                  <label class="complete-toggle">
+                    <input type="checkbox" id="step-complete" />
+                    <span>Шаг понятен и выполнен</span>
+                  </label>
+                </div>
+                <figure class="screenshot-frame">
+                  <button class="screenshot-zoom" id="screenshot-zoom" type="button" aria-label="Открыть скриншот крупно">
+                    <img id="step-image" src="" alt="" />
+                  </button>
+                  <figcaption id="step-caption"></figcaption>
+                </figure>
+              </div>
+            </section>
+
+            <section class="lesson-view" id="check-view">
+              <div class="checklist" id="checklist"></div>
+            </section>
+
+            <section class="lesson-view" id="issues-view">
+              <div class="mistake-grid" id="mistake-grid"></div>
+              <div class="mistake-detail" id="mistake-detail"></div>
+            </section>
+
+            <section class="lesson-view" id="video-view">
+              <div class="video-panel">
+                <video id="source-video" controls preload="metadata"></video>
+                <div>
+                  <p class="eyebrow">Исходный ролик</p>
+                  <h3 id="video-title"></h3>
+                  <p id="video-note"></p>
+                  <a class="file-link" id="video-link" href="" target="_blank" rel="noreferrer">Открыть видео отдельно</a>
+                </div>
+              </div>
+            </section>
+
+            <details class="tag-panel">
+              <summary>Ключевые слова</summary>
+              <div class="keyword-row" id="keyword-row" aria-label="Ключевые слова материала"></div>
+            </details>
+          </article>
+        </section>
+
+        <section class="develop-layout hidden" id="develop-layout" aria-label="Разработка урока">
+          <div class="develop-card">
+            <header class="develop-header">
+              <div>
+                <p class="eyebrow">Конструктор</p>
+                <h2>Разработка урока из видео</h2>
+                <p class="develop-lead">
+                  Загрузите видео с инструкцией — инструмент сам сделает транскрипцию, шаги, скриншоты и экспорт в HTML/PDF.
+                  Все проекты хранятся локально на этом компьютере.
+                </p>
+              </div>
+              <a class="dev-link-btn dev-link-btn-light" href="http://127.0.0.1:8765/" target="_blank" rel="noreferrer">Открыть в новой вкладке</a>
+            </header>
+            <iframe
+              class="develop-frame"
+              id="develop-frame"
+              title="Разработка урока"
+              data-local-src="http://127.0.0.1:8765/"
+              loading="lazy"
+            ></iframe>
+            <p class="develop-note" id="develop-note">
+              Конструктор уроков работает только локально на вашем компьютере. Опубликованные материалы открываются здесь, на хостинге.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="image-lightbox" id="image-lightbox" hidden>
+      <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Закрыть">×</button>
+      <img id="lightbox-image" src="" alt="" />
+      <p id="lightbox-caption"></p>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

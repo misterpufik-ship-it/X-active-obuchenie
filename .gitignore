@@ -1,0 +1,13 @@
+lesson_builder/projects/
+lesson_builder/**/__pycache__/
+*.pyc
+Videos/
+source_video.mp4
+*.mp4
+!site_ex2/assets/video.mp4
+training_output/
+video_frames/
+site/assets/wb_supply_probe/
+site/videos/
+site_server*.log
+__pycache__/
