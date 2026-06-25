@@ -22,7 +22,7 @@ VIDEOS_DIR = SITE_ROOT / "videos"
 def _load_published() -> list[dict[str, Any]]:
     if not PUBLISHED_FILE.is_file():
         return []
-    return json.loads(PUBLISHED_FILE.read_text(encoding="utf-8"))
+    return json.loads(PUBLISHED_FILE.read_text(encoding="utf-8-sig"))
 
 
 def _save_published(items: list[dict[str, Any]]) -> None:
