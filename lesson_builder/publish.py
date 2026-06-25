@@ -49,13 +49,17 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
             target_video = VIDEOS_DIR / f"{material_id}.mp4"
             shutil.copy2(source_video, target_video)
             video_rel = f"./videos/{target_video.name}"
+            # Видео не отправляем при каждой публикации — на хостинге мало места.
+            # Если нужно видео на сайте, загрузите его отдельным деплоем.
 
     material_steps: list[dict[str, Any]] = []
+    deploy_files = ["published-lessons.json"]
     for index, step in enumerate(data.get("steps", []), start=1):
         asset_name = f"{material_id}_step_{index:02d}.png"
         if step.get("frameFile"):
             rendered = render_annotated_image(project_id, step)
             shutil.copy2(rendered, ASSETS_DIR / asset_name)
+            deploy_files.append(f"assets/{asset_name}")
         material_steps.append(
             {
                 "title": step.get("title", f"Шаг {index}"),
@@ -95,7 +99,7 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
     data["publishedId"] = material_id
     storage.save_project(data)
 
-    deploy_result = auto_deploy(material_id)
+    deploy_result = auto_deploy(material_id, deploy_files)
     status_message = deploy_result.get("message") or f"Опубликовано: {material_id}"
     data["statusMessage"] = status_message
     storage.save_project(data)

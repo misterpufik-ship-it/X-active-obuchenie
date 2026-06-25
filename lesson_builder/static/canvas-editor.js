@@ -284,9 +284,10 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
     return state.annotations.find((item) => item.id === state.selectedId) || null;
   }
 
-  function redraw(bgImage = null) {
+  function paintCanvas(bgImage = null) {
+    const bg = bgImage ?? window.__canvasBgImage ?? null;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (bgImage) ctx.drawImage(bgImage, 0, 0);
+    if (bg) ctx.drawImage(bg, 0, 0);
     state.annotations.forEach((item) => {
       const isSelected = item.id === state.selectedId;
       const isHovered = item.id === state.hoveredId && !isSelected;
@@ -302,29 +303,55 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
       }
     });
     if (state.preview) drawAnnotation(ctx, state.preview, true, false);
-    renderPalette();
   }
 
-  function renderPalette() {
-    if (!paletteEl) return;
-    const item = selected();
+  let paletteReady = false;
+  let paintQueued = false;
+
+  function ensurePalette() {
+    if (!paletteEl || paletteReady) return;
     paletteEl.innerHTML = RAINBOW_COLORS.map(
       (color) =>
-        `<button type="button" class="color-swatch${item?.color === color ? " is-active" : ""}" data-color="${color}" style="background:${color}" title="${color}"></button>`
+        `<button type="button" class="color-swatch" data-color="${color}" style="background:${color}" title="${color}"></button>`
     ).join("");
-    paletteEl.querySelectorAll(".color-swatch").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const color = button.dataset.color;
-        state.color = color;
-        const current = selected();
-        if (current) {
-          current.color = color;
-          onChange(getAnnotations());
-        }
-        redraw(window.__canvasBgImage || null);
-      });
+    paletteEl.addEventListener("click", (event) => {
+      const button = event.target.closest(".color-swatch");
+      if (!button) return;
+      event.stopPropagation();
+      const color = button.dataset.color;
+      state.color = color;
+      const current = selected();
+      if (current) {
+        current.color = color;
+        onChange(getAnnotations());
+        syncPaletteActive();
+        schedulePaint();
+      }
     });
+    paletteReady = true;
+  }
+
+  function syncPaletteActive() {
+    ensurePalette();
+    if (!paletteEl) return;
+    const item = selected();
+    paletteEl.querySelectorAll(".color-swatch").forEach((button) => {
+      button.classList.toggle("is-active", item?.color === button.dataset.color);
+    });
+  }
+
+  function schedulePaint(bgImage = null) {
+    if (paintQueued) return;
+    paintQueued = true;
+    requestAnimationFrame(() => {
+      paintQueued = false;
+      paintCanvas(bgImage);
+    });
+  }
+
+  function redraw(bgImage = null) {
+    paintCanvas(bgImage);
+    syncPaletteActive();
   }
 
   function canvasPoint(event) {
@@ -336,7 +363,8 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
 
   function finishChange() {
     onChange(getAnnotations());
-    redraw(window.__canvasBgImage || null);
+    schedulePaint();
+    syncPaletteActive();
   }
 
   function commitCreated(item) {
@@ -345,9 +373,12 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
     state.drawing = false;
     state.start = null;
     state.pointerDown = false;
-    selectItem(item);
+    state.selectedId = item.id;
+    notifySelection();
     hooks.onRequestSelectTool?.();
-    finishChange();
+    onChange(getAnnotations());
+    schedulePaint();
+    syncPaletteActive();
   }
 
   function trySelectAt(point, preferHandle = true) {
@@ -491,7 +522,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
           item.ty = point.y;
         }
       }
-      redraw(window.__canvasBgImage || null);
+      schedulePaint();
       return;
     }
 
@@ -501,7 +532,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
       if (hoverId !== state.hoveredId) {
         state.hoveredId = hoverId;
         canvas.style.cursor = hoverId ? "pointer" : state.tool === "select" ? "default" : "crosshair";
-        redraw(window.__canvasBgImage || null);
+        schedulePaint();
       }
       return;
     }
@@ -532,7 +563,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
       state.preview.ax = point.x;
       state.preview.ay = point.y;
     }
-    redraw(window.__canvasBgImage || null);
+    schedulePaint();
   }
 
   function onPointerUp(event) {

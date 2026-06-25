@@ -112,10 +112,7 @@ function activateTool(tool) {
 
 function updatePaletteVisibility() {
   const hasSelection = Boolean(canvasEditor?.getSelectedId?.());
-  nodes.paletteRow.classList.toggle("hidden", !hasSelection);
-  if (hasSelection) {
-    canvasEditor.redraw(bgImage);
-  }
+  nodes.paletteRow.classList.toggle("is-visible", hasSelection);
 }
 
 function renderColorToolbar() {
@@ -719,10 +716,6 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && isCanvasLightboxOpen()) {
     closeCanvasLightbox();
   }
-});
-
-nodes.canvas.addEventListener("mouseup", () => {
-  setTimeout(updatePaletteVisibility, 0);
 });
 
 renderColorToolbar();

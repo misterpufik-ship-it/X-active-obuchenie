@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -38,45 +37,41 @@ def _load_deploy_env() -> dict[str, str]:
     return values
 
 
-def _rsync_to_hosting(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def _ensure_remote_dirs(remote: str, hosting_path: str, relative_files: list[Path]) -> None:
+    dirs = {hosting_path}
+    for rel in relative_files:
+        parent = rel.parent.as_posix()
+        if parent and parent != ".":
+            dirs.add(f"{hosting_path}/{parent}")
+    for folder in sorted(dirs):
+        _run(["ssh", remote, f"mkdir -p '{folder}'"], timeout=60)
+
+
+def _rsync_publish_files(env: dict[str, str], files: list[Path]) -> subprocess.CompletedProcess[str]:
     hosting_user = env.get("HOSTING_USER", "")
     hosting_host = env.get("HOSTING_HOST", "")
     hosting_path = env.get("HOSTING_PATH", "")
-    backup_path = env.get("BACKUP_PATH", "~/deploy_backups/x-active-obuchenie")
     if not hosting_user or not hosting_host or not hosting_path:
         raise RuntimeError("В deploy.env не заданы HOSTING_USER/HOSTING_HOST/HOSTING_PATH.")
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     remote = f"{hosting_user}@{hosting_host}"
-    ssh_base = ["ssh", remote]
+    existing = [path for path in files if path.is_file()]
+    if not existing:
+        raise RuntimeError("Нет файлов для отправки на хостинг.")
 
-    _run([*ssh_base, f"mkdir -p '{backup_path}/{timestamp}'"], timeout=60)
-    _run(
-        [
-            *ssh_base,
-            f"if [ -d '{hosting_path}' ]; then cp -a '{hosting_path}/.' '{backup_path}/{timestamp}/' || true; fi",
-        ],
-        timeout=180,
-    )
+    relative = [path.relative_to(SITE_DIR) for path in existing]
+    _ensure_remote_dirs(remote, hosting_path, relative)
 
-    excludes = [
-        "--exclude=.git/",
-        "--exclude=.env",
-        "--exclude=node_modules/",
-    ]
-    source = str(SITE_DIR).replace("\\", "/")
-    if not source.endswith("/"):
-        source += "/"
-
-    return _run(
-        ["rsync", "-az", *excludes, source, f"{remote}:{hosting_path}/"],
-        timeout=600,
-    )
+    last = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+    for path, rel in zip(existing, relative, strict=True):
+        target = f"{remote}:{hosting_path}/{rel.as_posix()}"
+        last = _run(["rsync", "-az", str(path), target], timeout=300)
+        if last.returncode != 0:
+            return last
+    return last
 
 
-def _try_git_sync(material_id: str) -> str | None:
-    """Best-effort git commit/push; returns warning text if push failed."""
-    paths_to_add = ["site/published-lessons.json", "site/assets/", "site/videos/"]
+def _try_git_sync(material_id: str, paths_to_add: list[str]) -> str | None:
     _run(["git", "add", *paths_to_add], REPO_ROOT)
 
     status = _run(["git", "status", "--porcelain", "site/"], REPO_ROOT)
@@ -91,30 +86,44 @@ def _try_git_sync(material_id: str) -> str | None:
     if push.returncode != 0:
         tail = (push.stderr or push.stdout or "").strip()
         if "could not read Username" in tail or "Authentication failed" in tail:
-            return "GitHub push пропущен (на сервере нет токена) — файлы отправлены на хостинг напрямую."
+            return "GitHub push пропущен — урок уже на хостинге."
         return f"GitHub push не выполнен: {tail[:180]}"
     return None
 
 
-def auto_deploy(material_id: str) -> dict[str, Any]:
+def auto_deploy(material_id: str, deploy_files: list[str] | None = None) -> dict[str, Any]:
     url = f"https://nostradamus-1503.ru/obuchenie/?lesson={material_id}"
 
     if not SITE_DIR.is_dir():
         return {"deployed": False, "message": "Папка site/ не найдена.", "url": url}
 
+    rel_paths = deploy_files or ["published-lessons.json"]
+    abs_files = [(SITE_DIR / rel).resolve() for rel in rel_paths]
+    abs_files = [path for path in abs_files if path.is_file() and str(path).startswith(str(SITE_DIR.resolve()))]
+
+    if not abs_files and (SITE_DIR / "published-lessons.json").is_file():
+        abs_files = [SITE_DIR / "published-lessons.json"]
+
     env = _load_deploy_env()
     if env:
         try:
-            rsync = _rsync_to_hosting(env)
+            rsync = _rsync_publish_files(env, abs_files)
         except Exception as exc:  # noqa: BLE001
             return {"deployed": False, "message": str(exc), "url": url}
 
         if rsync.returncode != 0:
             tail = (rsync.stderr or rsync.stdout or "").strip()[-400:]
+            if "Disk quota exceeded" in tail:
+                return {
+                    "deployed": False,
+                    "message": "На хостинге закончилось место. Урок сохранён на сервере, но сайт не обновлён — освободите место на BeGet.",
+                    "url": url,
+                }
             return {"deployed": False, "message": f"Ошибка отправки на хостинг: {tail}", "url": url}
 
-        git_note = _try_git_sync(material_id)
-        message = "Урок опубликован и сайт обновлён на хостинге."
+        git_paths = [f"site/{path.relative_to(SITE_DIR).as_posix()}" for path in abs_files]
+        git_note = _try_git_sync(material_id, git_paths)
+        message = "Урок опубликован и обновлён на сайте."
         if git_note:
             message = f"{message} {git_note}"
         return {"deployed": True, "message": message, "url": url}
