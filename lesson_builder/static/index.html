@@ -86,6 +86,18 @@
               <button class="primary-btn" id="upload-video" type="button">Загрузить видео</button>
               <button class="secondary-btn" id="process-video" type="button">Создать инструкцию из видео</button>
             </div>
+            <div class="whisper-row">
+              <label class="whisper-model-label">Модель распознавания
+                <select id="field-whisper-model">
+                  <option value="base">base — быстро, черновик</option>
+                  <option value="small">small — рекомендуется</option>
+                  <option value="medium">medium — максимум качества</option>
+                  <option value="tiny">tiny — очень быстро</option>
+                </select>
+              </label>
+              <button class="ghost-btn" id="reclean-transcript" type="button" title="Перечистить текст и пересобрать шаги без повторного распознавания">Перечистить текст</button>
+            </div>
+            <p class="whisper-hint" id="whisper-hint">Модель применяется при следующей обработке видео. «Перечистить» — убрать паразиты из уже распознанного текста.</p>
           </section>
 
           <div class="editor-grid">
@@ -108,7 +120,13 @@
                 <label>Заголовок<input id="step-title" type="text" /></label>
                 <label>Зачем этот шаг<textarea id="step-why" rows="2"></textarea></label>
                 <label>Комментарий<textarea id="step-comment" rows="2"></textarea></label>
-                <label class="span-3">Действие<textarea id="step-action" rows="3"></textarea></label>
+                <label class="span-3 action-label">Действие
+                  <div class="action-field" id="action-field">
+                    <textarea id="step-action" rows="3" placeholder="Например: нажмите 1, затем выберите 2"></textarea>
+                    <div class="action-field-view" id="step-action-view" tabindex="0" title="Клик — редактировать"></div>
+                    <div class="action-markers" id="step-action-markers"></div>
+                  </div>
+                </label>
                 <label class="span-3">Готово, если<textarea id="step-result" rows="2"></textarea></label>
               </div>
 
@@ -157,7 +175,7 @@
                   <canvas id="annotation-canvas"></canvas>
                   <button class="canvas-expand-btn" id="canvas-expand" type="button">Увеличить</button>
                 </div>
-                <p class="canvas-hint">Клик по элементу — выделение и перемещение. Сноска: зажмите на тексте, потяните к точке, отпустите. Двойной клик по тексту — редактирование. Delete — удалить. Скриншот: «Загрузить файл» или Ctrl+V.</p>
+                <p class="canvas-hint">Клик по элементу — выделение и перемещение. Рамка/круг — автономер внутри (двойной клик — изменить). В «Действии» укажите номера — они станут кликабельными и подсветят элемент на скрине. Delete — удалить.</p>
               </div>
 
               <div class="canvas-placeholder hidden" id="canvas-placeholder">

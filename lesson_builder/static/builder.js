@@ -32,7 +32,8 @@ const state = {
   selectedStepId: null,
   selectedFrameId: null,
   pollTimer: null,
-  activeColor: "#1e88e5",
+  activeColor: "#e53935",
+  whisperModels: [],
 };
 
 const nodes = {
@@ -49,6 +50,9 @@ const nodes = {
   fieldKeywords: document.querySelector("#field-keywords"),
   fieldChecklist: document.querySelector("#field-checklist"),
   fieldIssues: document.querySelector("#field-issues"),
+  fieldWhisperModel: document.querySelector("#field-whisper-model"),
+  whisperHint: document.querySelector("#whisper-hint"),
+  recleanTranscript: document.querySelector("#reclean-transcript"),
   projectStatus: document.querySelector("#project-status"),
   statusMessage: document.querySelector("#status-message"),
   stepsCount: document.querySelector("#steps-count"),
@@ -57,6 +61,9 @@ const nodes = {
   stepTitle: document.querySelector("#step-title"),
   stepWhy: document.querySelector("#step-why"),
   stepAction: document.querySelector("#step-action"),
+  stepActionView: document.querySelector("#step-action-view"),
+  stepActionMarkers: document.querySelector("#step-action-markers"),
+  actionField: document.querySelector("#action-field"),
   stepComment: document.querySelector("#step-comment"),
   stepResult: document.querySelector("#step-result"),
   frameSelect: document.querySelector("#frame-select"),
@@ -84,6 +91,8 @@ const nodes = {
 let bgImage = null;
 let saveTimer = null;
 let canvasEditor = null;
+let pulseAnim = null;
+let actionFieldEditing = false;
 let annotationDockParent = null;
 let annotationDockNext = null;
 
@@ -97,10 +106,13 @@ function initCanvasEditor() {
       if (!frame) return;
       frame.annotations = annotations;
       scheduleSaveStep();
+      renderActionMarkers();
+      if (!actionFieldEditing) renderActionView();
     },
     {
       onSelectionChange: () => updatePaletteVisibility(),
       onRequestSelectTool: () => activateTool("select"),
+      onLabelsChange: () => renderActionMarkers(),
     }
   );
   canvasEditor.setColor(state.activeColor);
@@ -114,6 +126,98 @@ function activateTool(tool) {
   initCanvasEditor().setTool(tool);
   nodes.canvas.classList.toggle("tool-select", tool === "select");
   updatePaletteVisibility();
+}
+
+function frameAnnotationLabels(frame = selectedStepFrame()) {
+  return (frame?.annotations || [])
+    .filter((item) => item.label)
+    .map((item) => String(item.label));
+}
+
+function findAnnotationIdByLabel(label, frame = selectedStepFrame()) {
+  const key = String(label || "").trim();
+  if (!key) return null;
+  const item = (frame?.annotations || []).find((entry) => String(entry.label || "") === key);
+  return item?.id || null;
+}
+
+function pulseAnnotation(label) {
+  const editor = initCanvasEditor();
+  const id = findAnnotationIdByLabel(label) || editor.findByLabel(label)?.id;
+  if (!id) {
+    nodes.statusMessage.textContent = `Метка «${label}» не найдена на этом скрине.`;
+    return;
+  }
+  editor.selectAnnotation(id);
+  if (pulseAnim) cancelAnimationFrame(pulseAnim);
+  const start = performance.now();
+  const duration = 2400;
+  function frame(now) {
+    const t = (now - start) / duration;
+    if (t >= 1) {
+      editor.setPulse(null, 0);
+      pulseAnim = null;
+      return;
+    }
+    const phase = Math.sin(t * Math.PI * 5) * 0.5 + 0.5;
+    editor.setPulse(id, phase);
+    pulseAnim = requestAnimationFrame(frame);
+  }
+  pulseAnim = requestAnimationFrame(frame);
+  nodes.canvasWrap?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function renderActionMarkers() {
+  if (!nodes.stepActionMarkers) return;
+  const labels = frameAnnotationLabels();
+  if (!labels.length) {
+    nodes.stepActionMarkers.innerHTML = `<span class="action-markers-hint">Нарисуйте рамку или круг — появится номер метки.</span>`;
+    return;
+  }
+  nodes.stepActionMarkers.innerHTML = `<span class="action-markers-label">Метки на скрине:</span>${labels
+    .map(
+      (label) =>
+        `<button type="button" class="action-marker-btn" data-label="${escapeHtml(label)}" title="Подсветить на скрине">${escapeHtml(label)}</button>`
+    )
+    .join("")}`;
+  nodes.stepActionMarkers.querySelectorAll(".action-marker-btn").forEach((button) => {
+    button.addEventListener("click", () => pulseAnnotation(button.dataset.label));
+  });
+}
+
+function renderActionView() {
+  if (!nodes.stepActionView || actionFieldEditing) return;
+  const text = nodes.stepAction.value || "";
+  const labels = new Set(frameAnnotationLabels());
+  if (!text.trim()) {
+    nodes.stepActionView.innerHTML = `<span class="action-view-placeholder">Напишите действие. Укажите номера меток (1, 2, 3…) — они станут кликабельными.</span>`;
+    return;
+  }
+  const parts = [];
+  const re = /(\d+)/g;
+  let last = 0;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    parts.push(escapeHtml(text.slice(last, match.index)));
+    const label = match[1];
+    if (labels.has(label)) {
+      parts.push(`<button type="button" class="action-ref-btn" data-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`);
+    } else {
+      parts.push(escapeHtml(label));
+    }
+    last = match.index + label.length;
+  }
+  parts.push(escapeHtml(text.slice(last)));
+  nodes.stepActionView.innerHTML = parts.join("");
+  nodes.stepActionView.querySelectorAll(".action-ref-btn").forEach((button) => {
+    button.addEventListener("click", () => pulseAnnotation(button.dataset.label));
+  });
+}
+
+function setActionFieldEditing(editing) {
+  actionFieldEditing = editing;
+  nodes.actionField?.classList.toggle("is-editing", editing);
+  if (!editing) renderActionView();
 }
 
 function updatePaletteVisibility() {
@@ -295,6 +399,52 @@ async function openProject(projectId) {
   await loadProjects();
 }
 
+function updateWhisperHint() {
+  if (!nodes.whisperHint) return;
+  const model = nodes.fieldWhisperModel?.value || "base";
+  const entry = state.whisperModels.find((item) => item.id === model);
+  const hint = entry?.hint || model;
+  const used = state.project?.transcript?.whisperModel;
+  const usedNote = used ? ` Последняя обработка: ${used}.` : "";
+  nodes.whisperHint.textContent = `${hint}. Применится при следующей обработке видео.${usedNote} «Перечистить» — убрать паразиты из уже распознанного текста.`;
+}
+
+function updateRecleanButton() {
+  if (!nodes.recleanTranscript) return;
+  const hasTranscript = Boolean(state.project?.transcript?.segments?.length);
+  const busy = state.project?.status === "processing";
+  nodes.recleanTranscript.disabled = !hasTranscript || busy;
+}
+
+function renderWhisperModelOptions() {
+  if (!nodes.fieldWhisperModel || !state.whisperModels.length) return;
+  const current = state.project?.whisperModel || nodes.fieldWhisperModel.value || "base";
+  nodes.fieldWhisperModel.innerHTML = state.whisperModels
+    .map(
+      (item) =>
+        `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} — ${escapeHtml(item.hint || item.id)}</option>`
+    )
+    .join("");
+  nodes.fieldWhisperModel.value = current;
+  updateWhisperHint();
+}
+
+async function loadHealth() {
+  try {
+    const health = await api("/api/health");
+    state.whisperModels = health.whisperModels || [];
+    renderWhisperModelOptions();
+  } catch {
+    state.whisperModels = [
+      { id: "base", hint: "Быстро, черновик" },
+      { id: "small", hint: "Рекомендуется для инструкций" },
+      { id: "medium", hint: "Максимум качества, медленно" },
+      { id: "tiny", hint: "Очень быстро, низкое качество" },
+    ];
+    renderWhisperModelOptions();
+  }
+}
+
 function renderEditor() {
   const project = state.project;
   nodes.projectTopic.textContent = project.topic || "Без темы";
@@ -307,6 +457,9 @@ function renderEditor() {
   nodes.fieldKeywords.value = (project.keywords || []).join(", ");
   nodes.fieldChecklist.value = listToLines(project.checklist);
   nodes.fieldIssues.value = issuesToLines(project.issues);
+  nodes.fieldWhisperModel.value = project.whisperModel || "base";
+  updateWhisperHint();
+  updateRecleanButton();
   nodes.projectStatus.textContent = project.status || "draft";
   nodes.statusMessage.textContent = project.statusMessage || "";
   nodes.stepsCount.textContent = String(project.steps?.length || 0);
@@ -314,6 +467,7 @@ function renderEditor() {
   renderStepsList();
   renderFrameSelect();
   void renderStepEditor();
+  updateRecleanButton();
 }
 
 function renderStepsList() {
@@ -425,6 +579,8 @@ async function renderStepEditor() {
   editor.setAnnotations(frame?.annotations || []);
   editor.redraw(bgImage);
   updatePaletteVisibility();
+  renderActionMarkers();
+  renderActionView();
 }
 
 async function loadCanvasImage(frame) {
@@ -468,6 +624,7 @@ function collectProjectPayload() {
       .filter(Boolean),
     checklist: linesToList(nodes.fieldChecklist.value),
     issues: linesToIssues(nodes.fieldIssues.value),
+    whisperModel: nodes.fieldWhisperModel?.value || "base",
     steps: state.project.steps,
   };
 }
@@ -546,8 +703,27 @@ document.querySelector("#delete-annotation").addEventListener("click", () => {
   node.addEventListener("input", scheduleSaveProject);
 });
 
-[nodes.stepTitle, nodes.stepWhy, nodes.stepAction, nodes.stepComment, nodes.stepResult].forEach((node) => {
+nodes.fieldWhisperModel?.addEventListener("change", () => {
+  if (state.project) state.project.whisperModel = nodes.fieldWhisperModel.value;
+  updateWhisperHint();
+  scheduleSaveProject();
+});
+
+[nodes.stepTitle, nodes.stepWhy, nodes.stepComment, nodes.stepResult].forEach((node) => {
   node.addEventListener("input", scheduleSaveStep);
+});
+
+nodes.stepAction.addEventListener("input", () => {
+  scheduleSaveStep();
+  if (!actionFieldEditing) renderActionView();
+});
+
+nodes.stepAction.addEventListener("focus", () => setActionFieldEditing(true));
+nodes.stepAction.addEventListener("blur", () => setActionFieldEditing(false));
+
+nodes.stepActionView?.addEventListener("click", () => {
+  setActionFieldEditing(true);
+  nodes.stepAction.focus();
 });
 
 document.querySelector("#save-project").addEventListener("click", async () => {
@@ -691,10 +867,38 @@ document.querySelector("#process-video").addEventListener("click", async () => {
     await flushPendingSave();
     await api(`/api/projects/${state.project.id}/process`, { method: "POST" });
     state.project.status = "processing";
+    updateRecleanButton();
     renderEditor();
     startPolling();
   } catch (error) {
     alert(error.message);
+  }
+});
+
+nodes.recleanTranscript?.addEventListener("click", async () => {
+  if (!state.project || nodes.recleanTranscript.disabled) return;
+  if (
+    !confirm(
+      "Перечистить текст и пересобрать шаги?\n\nТексты шагов будут обновлены из распознанной речи. Разметка на скринах сохранится, если таймкоды совпадут."
+    )
+  ) {
+    return;
+  }
+  try {
+    nodes.recleanTranscript.disabled = true;
+    nodes.statusMessage.textContent = "Перечистка текста…";
+    await flushPendingSave();
+    state.project = await api(`/api/projects/${state.project.id}/reclean-transcript`, { method: "POST" });
+    renderEditor();
+    if (state.project.steps?.length) {
+      state.selectedStepId = state.project.steps[0].id;
+      state.selectedFrameId = selectedStepFrame(state.project.steps[0])?.id || null;
+      await renderStepEditor();
+    }
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    updateRecleanButton();
   }
 });
 
@@ -941,12 +1145,14 @@ document.addEventListener("keydown", (event) => {
 
 renderColorToolbar();
 initCanvasEditor();
-loadProjects().then(async () => {
-  const params = new URLSearchParams(window.location.search);
-  const projectId = params.get("project");
-  if (projectId) {
-    await openProject(projectId);
-  }
+loadHealth().finally(() => {
+  loadProjects().then(async () => {
+    const params = new URLSearchParams(window.location.search);
+    const projectId = params.get("project");
+    if (projectId) {
+      await openProject(projectId);
+    }
+  });
 });
 
 const siteHomeLink = document.querySelector("#site-home-link");

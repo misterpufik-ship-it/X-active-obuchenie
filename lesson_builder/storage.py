@@ -68,6 +68,7 @@ def new_project(title: str = "Новый урок", topic: str = "Без тем�
         "videoFile": "",
         "status": "draft",
         "statusMessage": "Загрузите видео и запустите обработку.",
+        "whisperModel": "base",
         "transcript": {"language": "ru", "fullText": "", "segments": []},
         "availableFrames": [],
         "steps": [],

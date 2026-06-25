@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import uuid
 from pathlib import Path
@@ -11,6 +12,25 @@ from PIL import Image
 
 from . import storage
 from .ffmpeg_util import require_ffmpeg, run
+from .transcript_clean import clean_transcript
+
+WHISPER_MODELS = ("tiny", "base", "small", "medium")
+WHISPER_MODEL_HINTS = {
+    "tiny": "Очень быстро, низкое качество",
+    "base": "Быстро, черновик",
+    "small": "Рекомендуется для инструкций",
+    "medium": "Максимум качества, медленно",
+}
+
+
+def whisper_settings(project: dict[str, Any] | None = None) -> dict[str, str]:
+    project_model = str((project or {}).get("whisperModel") or "").strip()
+    model_name = (os.environ.get("WHISPER_MODEL") or project_model or "base").strip()
+    if model_name not in WHISPER_MODELS:
+        model_name = "base"
+    device = os.environ.get("WHISPER_DEVICE", "cpu").strip() or "cpu"
+    compute_type = os.environ.get("WHISPER_COMPUTE", "int8").strip() or "int8"
+    return {"model": model_name, "device": device, "compute_type": compute_type}
 
 
 ACTION_WORDS = (
@@ -89,7 +109,7 @@ def extract_audio(video_path: Path, audio_path: Path) -> None:
     )
 
 
-def transcribe_audio(audio_path: Path) -> dict[str, Any]:
+def transcribe_audio(audio_path: Path, *, whisper_model: str | None = None) -> dict[str, Any]:
     try:
         from faster_whisper import WhisperModel
     except ImportError as exc:
@@ -97,8 +117,15 @@ def transcribe_audio(audio_path: Path) -> dict[str, Any]:
             "Модуль faster-whisper не установлен. Выполните: pip install -r lesson_builder/requirements.txt"
         ) from exc
 
-    model = WhisperModel("base", device="cpu", compute_type="int8")
-    segments_iter, info = model.transcribe(str(audio_path), language="ru", vad_filter=True)
+    settings = whisper_settings({"whisperModel": whisper_model} if whisper_model else None)
+    model_name = settings["model"]
+    model = WhisperModel(model_name, device=settings["device"], compute_type=settings["compute_type"])
+    segments_iter, info = model.transcribe(
+        str(audio_path),
+        language="ru",
+        vad_filter=True,
+        initial_prompt="Инструкция по работе с программой. Чёткая речь без лишних слов.",
+    )
 
     segments: list[dict[str, Any]] = []
     parts: list[str] = []
@@ -109,12 +136,14 @@ def transcribe_audio(audio_path: Path) -> dict[str, Any]:
         segments.append({"start": round(segment.start, 2), "end": round(segment.end, 2), "text": text})
         parts.append(text)
 
-    return {
+    transcript = {
         "language": info.language or "ru",
         "duration": round(info.duration, 2) if info.duration else 0,
         "fullText": " ".join(parts),
         "segments": segments,
+        "whisperModel": model_name,
     }
+    return clean_transcript(transcript)
 
 
 def _looks_like_action(text: str) -> bool:
@@ -269,6 +298,80 @@ def estimate_duration(steps: list[dict[str, Any]]) -> str:
     return f"{minutes}-{minutes + 5} минут"
 
 
+def _transcript_before_clean(transcript: dict[str, Any]) -> dict[str, Any]:
+    segments: list[dict[str, Any]] = []
+    for segment in transcript.get("segments") or []:
+        text = str(segment.get("rawText") or segment.get("text") or "").strip()
+        if not text:
+            continue
+        segments.append(
+            {
+                "start": segment.get("start", 0),
+                "end": segment.get("end", 0),
+                "text": text,
+            }
+        )
+    return {
+        **transcript,
+        "segments": segments,
+        "fullText": " ".join(item["text"] for item in segments),
+    }
+
+
+def _merge_step_frames(old_steps: list[dict[str, Any]], new_steps: list[dict[str, Any]]) -> None:
+    for new_step in new_steps:
+        best: dict[str, Any] | None = None
+        best_delta = float("inf")
+        target = float(new_step.get("timeStart") or 0)
+        for old in old_steps:
+            delta = abs(float(old.get("timeStart") or 0) - target)
+            if delta < best_delta:
+                best_delta = delta
+                best = old
+        if not best or best_delta > 4:
+            continue
+        for key in ("frames", "frameFile", "annotatedFile", "annotations"):
+            value = best.get(key)
+            if value:
+                new_step[key] = value
+
+
+def _frames_from_project(project_id: str, data: dict[str, Any]) -> list[dict[str, Any]]:
+    frames: list[dict[str, Any]] = []
+    root = storage.project_dir(project_id)
+    for item in data.get("availableFrames") or []:
+        rel = item.get("file") or ""
+        path = root / rel
+        if not path.is_file():
+            continue
+        frames.append({"file": Path(rel).name, "time": item.get("time", 0), "path": path})
+    return frames
+
+
+def reclean_project_transcript(project_id: str) -> dict[str, Any]:
+    data = storage.load_project(project_id)
+    transcript = data.get("transcript") or {}
+    if not transcript.get("segments"):
+        raise RuntimeError("Нет распознанного текста. Сначала обработайте видео.")
+
+    raw = _transcript_before_clean(transcript)
+    cleaned = clean_transcript(raw)
+    data["transcript"] = cleaned
+
+    old_steps = data.get("steps") or []
+    new_steps = split_into_steps(cleaned.get("segments", []))
+    _merge_step_frames(old_steps, new_steps)
+
+    unique_frames = _frames_from_project(project_id, data)
+    if unique_frames:
+        match_steps_to_frames(new_steps, unique_frames)
+
+    data["steps"] = new_steps
+    data["duration"] = estimate_duration(new_steps)
+    data["statusMessage"] = f"Текст перечищен: {len(new_steps)} шагов."
+    return storage.save_project(data)
+
+
 def process_project(project_id: str) -> dict[str, Any]:
     data = storage.load_project(project_id)
     paths = storage.ensure_dirs(project_id)
@@ -284,8 +387,8 @@ def process_project(project_id: str) -> dict[str, Any]:
     audio_path = paths["audio"] / "audio.wav"
     extract_audio(video_path, audio_path)
 
-    storage.update_status(project_id, "processing", "Распознаём речь…")
-    transcript = transcribe_audio(audio_path)
+    storage.update_status(project_id, "processing", "Распознаём и чистим речь…")
+    transcript = transcribe_audio(audio_path, whisper_model=data.get("whisperModel"))
     data["transcript"] = transcript
 
     storage.update_status(project_id, "processing", "Делим текст на шаги…")

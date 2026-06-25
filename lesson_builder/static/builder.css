@@ -380,6 +380,38 @@ button {
   align-items: center;
 }
 
+.whisper-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.whisper-model-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  min-width: 260px;
+}
+
+.whisper-model-label select {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.whisper-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .editor-grid {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
@@ -707,6 +739,90 @@ dialog menu {
   gap: 8px;
   margin: 12px 0 0;
   padding: 0;
+}
+
+.action-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.action-field:not(.is-editing) textarea {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.action-field-view {
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  cursor: text;
+}
+
+.action-field.is-editing .action-field-view {
+  display: none;
+}
+
+.action-view-placeholder {
+  color: var(--muted);
+}
+
+.action-markers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-markers-label,
+.action-markers-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.action-marker-btn,
+.action-ref-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 2px solid #e53935;
+  border-radius: 999px;
+  background: #fff5f5;
+  color: #c62828;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+  vertical-align: middle;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.action-marker-btn:hover,
+.action-ref-btn:hover {
+  background: #e53935;
+  color: #fff;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.25);
+}
+
+.action-ref-btn {
+  margin: 0 2px;
 }
 
 @media (max-width: 1100px) {

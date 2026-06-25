@@ -1,5 +1,7 @@
 /* Canvas annotation editor for lesson builder */
 
+const DEFAULT_COLOR = "#e53935";
+
 const RAINBOW_COLORS = [
   "#e53935",
   "#ff6f00",
@@ -18,6 +20,28 @@ const HANDLE_RADIUS = 12;
 
 function annotationId() {
   return `ann-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function nextAnnotationLabel(annotations) {
+  const used = new Set(
+    (annotations || [])
+      .map((item) => item.label)
+      .filter(Boolean)
+      .map(String)
+  );
+  let n = 1;
+  while (used.has(String(n))) n += 1;
+  return String(n);
+}
+
+function labelCenter(item) {
+  if (item.type === "rect") {
+    return { x: item.x + item.w / 2, y: item.y + item.h / 2 };
+  }
+  if (item.type === "circle") {
+    return { x: item.cx, y: item.cy };
+  }
+  return null;
 }
 
 function dist(a, b) {
@@ -165,6 +189,34 @@ function drawHandle(ctx, x, y, color = "#ff6f00") {
   ctx.stroke();
 }
 
+function drawLabelBadge(ctx, item, color, pulse = 0) {
+  const label = item.label;
+  if (!label) return;
+  const center = labelCenter(item);
+  if (!center) return;
+
+  const baseSize = Math.max(18, Math.min(28, (item.r || Math.min(item.w, item.h) / 3 || 24) * 0.45));
+  const size = baseSize + pulse * 6;
+  const radius = size * 0.72 + pulse * 4;
+
+  ctx.save();
+  if (pulse > 0) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8 + pulse * 18;
+  }
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `700 ${size}px Segoe UI`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(label), center.x, center.y + 1);
+  ctx.restore();
+}
+
 function drawTextBox(ctx, x, y, text, color, size, preview = false) {
   ctx.font = `700 ${size}px Segoe UI`;
   const metrics = ctx.measureText(text);
@@ -182,21 +234,33 @@ function drawTextBox(ctx, x, y, text, color, size, preview = false) {
   ctx.fillText(text, x, y + size - 4);
 }
 
-function drawAnnotation(ctx, item, preview = false, selected = false) {
-  const color = item.color || "#1e88e5";
-  const stroke = item.stroke || 4;
+function drawAnnotation(ctx, item, preview = false, selected = false, pulse = 0) {
+  const color = item.color || DEFAULT_COLOR;
+  const stroke = (item.stroke || 4) + pulse * 3;
   ctx.save();
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = stroke;
   if (preview) ctx.setLineDash([8, 6]);
 
+  if (pulse > 0) {
+    const b = annotationBounds(ctx, item);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.25 + pulse * 0.35;
+    ctx.lineWidth = 4 + pulse * 10;
+    ctx.strokeRect(b.x - 6 - pulse * 8, b.y - 6 - pulse * 8, b.w + 12 + pulse * 16, b.h + 12 + pulse * 16);
+    ctx.restore();
+  }
+
   if (item.type === "rect") {
     ctx.strokeRect(item.x, item.y, item.w, item.h);
+    if (!preview) drawLabelBadge(ctx, item, color, pulse);
   } else if (item.type === "circle") {
     ctx.beginPath();
     ctx.arc(item.cx, item.cy, item.r, 0, Math.PI * 2);
     ctx.stroke();
+    if (!preview) drawLabelBadge(ctx, item, color, pulse);
   } else if (item.type === "arrow") {
     drawArrow(ctx, item.x1, item.y1, item.x2, item.y2, color, stroke);
   } else if (item.type === "text") {
@@ -245,11 +309,13 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
   const ctx = canvas.getContext("2d");
   const state = {
     tool: "select",
-    color: "#1e88e5",
+    color: DEFAULT_COLOR,
     stroke: 4,
     annotations: [],
     selectedId: null,
     hoveredId: null,
+    pulseId: null,
+    pulsePhase: 0,
     drawing: false,
     start: null,
     preview: null,
@@ -291,7 +357,8 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
     state.annotations.forEach((item) => {
       const isSelected = item.id === state.selectedId;
       const isHovered = item.id === state.hoveredId && !isSelected;
-      drawAnnotation(ctx, item, false, isSelected);
+      const pulse = item.id === state.pulseId ? state.pulsePhase : 0;
+      drawAnnotation(ctx, item, false, isSelected, pulse);
       if (isHovered) {
         const b = annotationBounds(ctx, item);
         ctx.save();
@@ -379,6 +446,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
     onChange(getAnnotations());
     schedulePaint();
     syncPaletteActive();
+    hooks.onLabelsChange?.(getAnnotations());
   }
 
   function trySelectAt(point, preferHandle = true) {
@@ -609,6 +677,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
         h: Math.abs(point.y - start.y),
         color: state.color,
         stroke: state.stroke,
+        label: nextAnnotationLabel(state.annotations),
       });
       return;
     }
@@ -622,6 +691,7 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
         r: Math.hypot(point.x - start.x, point.y - start.y),
         color: state.color,
         stroke: state.stroke,
+        label: nextAnnotationLabel(state.annotations),
       });
       return;
     }
@@ -676,6 +746,15 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
       item.text = next.trim() || item.text;
       selectItem(item);
       finishChange();
+      return;
+    }
+    if (item.type === "rect" || item.type === "circle") {
+      const next = prompt("Номер метки:", item.label || "");
+      if (next === null) return;
+      item.label = next.trim() || item.label;
+      selectItem(item);
+      finishChange();
+      hooks.onLabelsChange?.(getAnnotations());
     }
   });
 
@@ -742,9 +821,24 @@ function createCanvasEditor(canvas, paletteEl, onChange, hooks = {}) {
       const item = state.annotations.find((entry) => entry.id === id);
       if (item) selectItem(item);
     },
+    findByLabel(label) {
+      const key = String(label || "").trim();
+      if (!key) return null;
+      return state.annotations.find((item) => String(item.label || "") === key) || null;
+    },
+    getLabeledAnnotations() {
+      return state.annotations.filter((item) => item.label);
+    },
+    setPulse(id, phase = 0) {
+      state.pulseId = id || null;
+      state.pulsePhase = phase;
+      schedulePaint();
+    },
     colors: RAINBOW_COLORS,
   };
 }
 
+window.DEFAULT_ANNOTATION_COLOR = DEFAULT_COLOR;
+window.nextAnnotationLabel = nextAnnotationLabel;
 window.RAINBOW_COLORS = RAINBOW_COLORS;
 window.createCanvasEditor = createCanvasEditor;

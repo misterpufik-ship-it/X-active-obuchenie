@@ -37,12 +37,46 @@ def _font(size: int = 22, bold: bool = False) -> ImageFont.FreeTypeFont | ImageF
     return ImageFont.load_default()
 
 
+DEFAULT_EXPORT_COLOR = "#e53935"
+
+
 def _hex_to_rgba(value: str, alpha: int = 255) -> tuple[int, int, int, int]:
     value = value.lstrip("#")
     if len(value) == 6:
         r, g, b = int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
         return r, g, b, alpha
-    return 0, 118, 255, alpha
+    r, g, b = _hex_to_rgba(DEFAULT_EXPORT_COLOR, alpha=255)[:3]
+    return r, g, b, alpha
+
+
+def _draw_label_badge(
+    draw: ImageDraw.ImageDraw,
+    item: dict[str, Any],
+    color: tuple[int, int, int, int],
+) -> None:
+    label = item.get("label")
+    if not label:
+        return
+    item_type = item.get("type")
+    if item_type == "rect":
+        cx = item["x"] + item["w"] / 2
+        cy = item["y"] + item["h"] / 2
+        base = min(item["w"], item["h"]) / 3
+    elif item_type == "circle":
+        cx, cy = item["cx"], item["cy"]
+        base = item["r"] * 0.9
+    else:
+        return
+
+    size = max(18, min(28, int(base * 0.45)))
+    radius = int(size * 0.72)
+    draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=color)
+    font = _font(size, bold=True)
+    text = str(label)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+    draw.text((cx - tw / 2, cy - th / 2 - 1), text, fill=(255, 255, 255, 255), font=font)
 
 
 def render_annotated_image(
@@ -65,16 +99,18 @@ def render_annotated_image(
     draw = ImageDraw.Draw(overlay, "RGBA")
 
     for item in annotations or []:
-        color = _hex_to_rgba(item.get("color", "#0076ff"), 230)
+        color = _hex_to_rgba(item.get("color", DEFAULT_EXPORT_COLOR), 230)
         stroke = max(2, int(item.get("stroke", 4)))
         item_type = item.get("type")
 
         if item_type == "rect":
             x, y, w, h = item["x"], item["y"], item["w"], item["h"]
             draw.rounded_rectangle((x, y, x + w, y + h), radius=8, outline=color, width=stroke)
+            _draw_label_badge(draw, item, color)
         elif item_type == "circle":
             cx, cy, r = item["cx"], item["cy"], item["r"]
             draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline=color, width=stroke)
+            _draw_label_badge(draw, item, color)
         elif item_type == "arrow":
             x1, y1, x2, y2 = item["x1"], item["y1"], item["x2"], item["y2"]
             draw.line((x1, y1, x2, y2), fill=color, width=stroke)

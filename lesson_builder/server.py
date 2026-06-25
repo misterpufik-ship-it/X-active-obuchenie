@@ -92,6 +92,11 @@ def api_health():
             "ffprobe": ffprobe,
             "ffmpegReady": bool(ffmpeg and ffprobe),
             "whisperReady": whisper_ok,
+            "whisperModels": [
+                {"id": model, "hint": pipeline.WHISPER_MODEL_HINTS.get(model, model)}
+                for model in pipeline.WHISPER_MODELS
+            ],
+            "defaultWhisperModel": pipeline.whisper_settings()["model"],
         }
     )
 
@@ -138,6 +143,7 @@ def api_update_project(project_id: str):
         "checklist",
         "issues",
         "steps",
+        "whisperModel",
     ):
         if key in payload:
             current[key] = payload[key]
@@ -273,6 +279,20 @@ def _run_pipeline(project_id: str) -> None:
             storage.save_project(data)
         except FileNotFoundError:
             pass
+
+
+@app.post("/api/projects/<project_id>/reclean-transcript")
+def api_reclean_transcript(project_id: str):
+    try:
+        data = pipeline.reclean_project_transcript(project_id)
+        return jsonify(data)
+    except FileNotFoundError:
+        return jsonify({"error": "Проект не найден"}), 404
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:  # noqa: BLE001
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.post("/api/projects/<project_id>/process")

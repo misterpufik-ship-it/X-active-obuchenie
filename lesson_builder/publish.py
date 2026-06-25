@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from . import storage
 from .deploy_site import auto_deploy
 from .export import render_annotated_image
@@ -66,10 +68,21 @@ def publish_to_site(project_id: str, *, skip_deploy: bool = False) -> dict[str, 
             )
             shutil.copy2(rendered, ASSETS_DIR / asset_name)
             deploy_files.append(f"assets/{asset_name}")
+            with Image.open(rendered) as img:
+                image_width, image_height = img.size
+            annotations = frame.get("annotations") or []
+            interactive_annotations = [
+                item
+                for item in annotations
+                if item.get("label") and item.get("type") in {"rect", "circle"}
+            ]
             step_images.append(
                 {
                     "image": f"./assets/{asset_name}",
                     "caption": step.get("comment", "") or step.get("title", ""),
+                    "width": image_width,
+                    "height": image_height,
+                    "annotations": interactive_annotations,
                 }
             )
         material_steps.append(

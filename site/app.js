@@ -697,6 +697,130 @@ function completedSet(materialId = state.selectedMaterialId) {
   return state.completed[materialId];
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function annotationLabels(annotations = []) {
+  return new Set(
+    annotations
+      .filter((item) => item?.label)
+      .map((item) => String(item.label))
+  );
+}
+
+function labelsFromScreenshots(screenshots) {
+  const labels = new Set();
+  screenshots.forEach((shot) => {
+    annotationLabels(shot.annotations).forEach((label) => labels.add(label));
+  });
+  return labels;
+}
+
+function renderInteractiveAction(text, labels) {
+  const source = String(text || "");
+  if (!source.trim()) return "";
+  const labelSet = labels instanceof Set ? labels : new Set(labels);
+  const parts = [];
+  const re = /(\d+)/g;
+  let last = 0;
+  let match;
+  while ((match = re.exec(source)) !== null) {
+    parts.push(escapeHtml(source.slice(last, match.index)));
+    const label = match[1];
+    if (labelSet.has(label)) {
+      parts.push(
+        `<button type="button" class="action-ref-btn" data-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`
+      );
+    } else {
+      parts.push(escapeHtml(label));
+    }
+    last = match.index + label.length;
+  }
+  parts.push(escapeHtml(source.slice(last)));
+  return parts.join("");
+}
+
+function markerStyle(item, width, height) {
+  const w = Number(width) || 1;
+  const h = Number(height) || 1;
+  if (item.type === "rect") {
+    return {
+      left: `${(item.x / w) * 100}%`,
+      top: `${(item.y / h) * 100}%`,
+      width: `${(item.w / w) * 100}%`,
+      height: `${(item.h / h) * 100}%`,
+    };
+  }
+  if (item.type === "circle") {
+    const diameter = item.r * 2;
+    return {
+      left: `${((item.cx - item.r) / w) * 100}%`,
+      top: `${((item.cy - item.r) / h) * 100}%`,
+      width: `${(diameter / w) * 100}%`,
+      height: `${(diameter / h) * 100}%`,
+    };
+  }
+  return null;
+}
+
+function renderScreenshotMarkers(annotations, width, height, pulseLabel = "") {
+  return (annotations || [])
+    .filter((item) => item?.label && (item.type === "rect" || item.type === "circle"))
+    .map((item) => {
+      const style = markerStyle(item, width, height);
+      if (!style) return "";
+      const pulse = pulseLabel === String(item.label) ? " is-pulsing" : "";
+      const shapeClass = item.type === "circle" ? " screenshot-marker-circle" : "";
+      const styleText = Object.entries(style)
+        .map(([key, value]) => `${key}:${value}`)
+        .join(";");
+      return `<div class="screenshot-marker${shapeClass}${pulse}" data-label="${escapeHtml(String(item.label))}" style="${styleText}">
+        <span class="screenshot-marker-badge">${escapeHtml(String(item.label))}</span>
+      </div>`;
+    })
+    .join("");
+}
+
+let pulseTimer = null;
+
+function pulseScreenshotLabel(label) {
+  if (pulseTimer) {
+    clearTimeout(pulseTimer);
+    pulseTimer = null;
+  }
+  document.querySelectorAll(".screenshot-marker, .action-ref-btn").forEach((node) => {
+    node.classList.toggle("is-pulsing", node.dataset.label === String(label));
+  });
+  const target = document.querySelector(`.screenshot-marker[data-label="${CSS.escape(String(label))}"]`);
+  target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  pulseTimer = window.setTimeout(() => {
+    document.querySelectorAll(".is-pulsing").forEach((node) => node.classList.remove("is-pulsing"));
+    pulseTimer = null;
+  }, 2400);
+}
+
+function bindInteractiveLessonHandlers(screenshots, labels) {
+  document.querySelectorAll(".action-ref-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      pulseScreenshotLabel(button.dataset.label);
+    });
+  });
+  document.querySelectorAll(".screenshot-marker").forEach((marker) => {
+    marker.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      pulseScreenshotLabel(marker.dataset.label);
+    });
+  });
+}
+
 function renderTopics(items) {
   const topics = [...new Set(materials.map((material) => material.topic))];
   nodes.topicList.innerHTML = topics
@@ -777,9 +901,16 @@ function renderLesson() {
   nodes.stepKicker.textContent = `Шаг ${state.currentStep + 1} из ${material.steps.length}`;
   nodes.stepTitle.textContent = step.title;
   nodes.stepWhy.textContent = step.why;
-  nodes.stepAction.textContent = step.action;
-  nodes.stepResult.textContent = step.result;
   const screenshots = stepScreenshots(step);
+  const labels = labelsFromScreenshots(screenshots);
+  if (state.editMode) {
+    nodes.stepAction.textContent = step.action;
+  } else if (labels.size) {
+    nodes.stepAction.innerHTML = renderInteractiveAction(step.action, labels);
+  } else {
+    nodes.stepAction.textContent = step.action;
+  }
+  nodes.stepResult.textContent = step.result;
   if (!screenshots.length) {
     nodes.stepImages.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
   } else {
@@ -792,14 +923,22 @@ function renderLesson() {
             : "";
         return `<figure class="screenshot-frame">
           <button class="screenshot-zoom" type="button" aria-label="Открыть скриншот крупно" data-image-index="${index}">
-            <img src="${item.image}" alt="Скриншот: ${step.title}${screenshots.length > 1 ? ` (${index + 1})` : ""}" />
+            <span class="screenshot-media">
+              <img src="${item.image}" alt="Скриншот: ${step.title}${screenshots.length > 1 ? ` (${index + 1})` : ""}" data-shot-index="${index}" />
+              ${
+                item.annotations?.length
+                  ? `<div class="screenshot-overlay">${renderScreenshotMarkers(item.annotations, item.width, item.height)}</div>`
+                  : ""
+              }
+            </span>
           </button>
           ${caption}
         </figure>`;
       })
       .join("");
     nodes.stepImages.querySelectorAll(".screenshot-zoom").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (event) => {
+        if (event.target.closest(".screenshot-marker, .action-ref-btn")) return;
         const item = screenshots[Number(button.dataset.imageIndex)];
         if (!item) return;
         nodes.lightboxImage.src = item.image;
@@ -808,6 +947,26 @@ function renderLesson() {
         nodes.lightbox.hidden = false;
       });
     });
+    nodes.stepImages.querySelectorAll("img[data-shot-index]").forEach((img) => {
+      img.addEventListener("load", () => {
+        const shot = screenshots[Number(img.dataset.shotIndex)];
+        if (!shot?.annotations?.length || shot.width) return;
+        shot.width = img.naturalWidth;
+        shot.height = img.naturalHeight;
+        const overlay = img.parentElement?.querySelector(".screenshot-overlay");
+        if (overlay) {
+          overlay.innerHTML = renderScreenshotMarkers(shot.annotations, shot.width, shot.height);
+          overlay.querySelectorAll(".screenshot-marker").forEach((marker) => {
+            marker.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              pulseScreenshotLabel(marker.dataset.label);
+            });
+          });
+        }
+      });
+    });
+    bindInteractiveLessonHandlers(screenshots, labels);
   }
   nodes.stepComplete.checked = completedSet(material.id).has(state.currentStep);
 
@@ -921,6 +1080,10 @@ function canEditMaterial(material) {
 }
 
 function setLessonEditMode(enabled) {
+  const step = selectedMaterial().steps[state.currentStep];
+  if (enabled && step && nodes.stepAction) {
+    nodes.stepAction.textContent = step.action || "";
+  }
   state.editMode = enabled;
   editableLessonFields().forEach((node) => {
     if (!node) return;
