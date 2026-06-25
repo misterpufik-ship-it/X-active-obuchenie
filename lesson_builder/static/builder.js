@@ -304,9 +304,26 @@ async function pulseAnnotation(label) {
   nodes.canvasWrap?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+function labelsUsedInAction() {
+  const text = plainTextFromHtml(getActionHtml());
+  const validLabels = new Set(stepAnnotationLabels());
+  const used = new Set();
+  const re = /\d+/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    if (validLabels.has(match[0])) used.add(match[0]);
+  }
+  return used;
+}
+
 function insertLabelIntoAction(label) {
   const field = nodes.stepAction;
-  if (!field || !actionFieldEditing) return false;
+  if (!field) return false;
+
+  if (!actionFieldEditing) {
+    field.focus();
+    setActionFieldEditing(true);
+  }
 
   field.focus();
   const insert = String(label);
@@ -335,32 +352,48 @@ function insertLabelIntoAction(label) {
 }
 
 function handleMarkerClick(label) {
-  if (insertLabelIntoAction(label)) {
-    nodes.statusMessage.textContent = `Метка «${label}» вставлена в действие.`;
-    return;
+  const usedInAction = labelsUsedInAction();
+  const isUsed = usedInAction.has(String(label));
+
+  if (actionFieldEditing || !isUsed) {
+    if (insertLabelIntoAction(label)) {
+      nodes.statusMessage.textContent = `Метка «${label}» вставлена в действие.`;
+      renderActionMarkers();
+      return;
+    }
   }
-  pulseAnnotation(label);
+
+  if (isUsed) {
+    pulseAnnotation(label);
+  }
 }
 
 function renderActionMarkers() {
   if (!nodes.stepActionMarkers) return;
-  const labels = frameAnnotationLabels();
+  const labels = stepAnnotationLabels();
   if (!labels.length) {
     nodes.stepActionMarkers.innerHTML = `<span class="action-markers-hint">Нарисуйте рамку или круг — появится номер метки.</span>`;
     return;
   }
-  const insertMode = actionFieldEditing;
-  const labelText = insertMode ? "Вставить в действие:" : "Метки шага (все скрины):";
-  const title = insertMode ? "Вставить номер в текст действия" : "Подсветить на скрине";
+  const usedInAction = labelsUsedInAction();
+  const labelText = actionFieldEditing ? "Вставить в действие:" : "Метки шага (все скрины):";
   nodes.stepActionMarkers.innerHTML = `<span class="action-markers-label">${labelText}</span>${labels
-    .map(
-      (label) =>
-        `<button type="button" class="action-marker-btn" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(label)}</button>`
-    )
+    .map((label) => {
+      const isUsed = usedInAction.has(label);
+      const stateClass = isUsed ? "is-used" : "is-unused";
+      const title = isUsed
+        ? actionFieldEditing
+          ? "Вставить номер ещё раз"
+          : "Подсветить на скрине"
+        : actionFieldEditing
+          ? "Вставить номер в текст действия"
+          : "Добавить номер в текст действия";
+      return `<button type="button" class="action-marker-btn ${stateClass}" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(label)}</button>`;
+    })
     .join("")}`;
   nodes.stepActionMarkers.querySelectorAll(".action-marker-btn").forEach((button) => {
     button.addEventListener("mousedown", (event) => {
-      if (actionFieldEditing) event.preventDefault();
+      event.preventDefault();
     });
     button.addEventListener("click", () => handleMarkerClick(button.dataset.label));
   });
@@ -863,12 +896,28 @@ nodes.fieldWhisperModel?.addEventListener("change", () => {
   scheduleSaveProject();
 });
 
-[nodes.stepTitle, nodes.stepWhy, nodes.stepComment, nodes.stepResult, nodes.stepAction].forEach((node) => {
+[nodes.stepTitle, nodes.stepWhy, nodes.stepComment, nodes.stepResult].forEach((node) => {
   node.addEventListener("input", scheduleSaveStep);
 });
 
+RICH_FIELDS().forEach((node) => {
+  node.addEventListener("mousedown", (event) => {
+    event.stopPropagation();
+  });
+});
+
+nodes.stepAction.addEventListener("input", () => {
+  scheduleSaveStep();
+  renderActionMarkers();
+});
+
 nodes.stepAction.addEventListener("focus", () => setActionFieldEditing(true));
-nodes.stepAction.addEventListener("blur", () => setActionFieldEditing(false));
+nodes.stepAction.addEventListener("blur", () => {
+  window.setTimeout(() => {
+    if (document.activeElement?.closest?.(".action-marker-btn")) return;
+    setActionFieldEditing(false);
+  }, 0);
+});
 
 document.querySelector("#save-project").addEventListener("click", async () => {
   try {
@@ -1175,7 +1224,7 @@ document.querySelector("#format-bold-red")?.addEventListener("click", applyBoldR
 nodes.canvasWrap?.addEventListener("click", () => nodes.canvasWrap.focus());
 nodes.stepFramesStrip?.addEventListener("click", () => nodes.stepFramesStrip.focus());
 document.querySelector("#workspace")?.addEventListener("click", (event) => {
-  if (event.target.closest("input, textarea, select, button, a, label")) return;
+  if (event.target.closest("input, textarea, select, button, a, label, .rich-field, [contenteditable='true']")) return;
   document.querySelector("#workspace")?.focus();
 });
 

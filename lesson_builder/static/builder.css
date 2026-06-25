@@ -823,25 +823,55 @@ dialog menu {
   font-weight: 700;
 }
 
-.action-field.is-editing .action-marker-btn {
-  border-color: #1565c0;
+.action-marker-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.action-marker-btn.is-unused {
+  border: 2px solid #1565c0;
   background: #e3f2fd;
   color: #0d47a1;
 }
 
-.action-field.is-editing .action-marker-btn:hover {
+.action-marker-btn.is-unused:hover {
   background: #1565c0;
   color: #fff;
+  transform: scale(1.04);
   box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.25);
 }
 
-.action-marker-btn,
+.action-marker-btn.is-used {
+  border: 2px solid #e53935;
+  background: #fff5f5;
+  color: #c62828;
+}
+
+.action-marker-btn.is-used:hover {
+  background: #e53935;
+  color: #fff;
+  transform: scale(1.04);
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.25);
+}
+
 .action-ref-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 28px;
   height: 28px;
+  margin: 0 2px;
   padding: 0 8px;
   border: 2px solid #e53935;
   border-radius: 999px;
@@ -854,16 +884,11 @@ dialog menu {
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.action-marker-btn:hover,
 .action-ref-btn:hover {
   background: #e53935;
   color: #fff;
   transform: scale(1.06);
   box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.25);
-}
-
-.action-ref-btn {
-  margin: 0 2px;
 }
 
 @media (max-width: 1100px) {
