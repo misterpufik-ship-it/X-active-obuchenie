@@ -19,10 +19,15 @@ ASSETS_DIR = SITE_ROOT / "assets"
 VIDEOS_DIR = SITE_ROOT / "videos"
 
 
+def _looks_mojibake(text: str) -> bool:
+    return "╨" in text or "╤" in text
+
+
 def _load_published() -> list[dict[str, Any]]:
     if not PUBLISHED_FILE.is_file():
         return []
-    return json.loads(PUBLISHED_FILE.read_text(encoding="utf-8-sig"))
+    items = json.loads(PUBLISHED_FILE.read_text(encoding="utf-8-sig"))
+    return [item for item in items if not _looks_mojibake(str(item.get("topic", "")))]
 
 
 def _save_published(items: list[dict[str, Any]]) -> None:

@@ -52,7 +52,7 @@ def rebuild_published_catalog(*, force: bool = False) -> int:
 
 
 def main() -> int:
-    force = "--force" in sys.argv[1:]
+    force = "--force" in sys.argv[1:] or "--deploy" in sys.argv[1:]
     rebuilt = rebuild_published_catalog(force=force)
     if rebuilt:
         print(f"Rebuilt published catalog for {rebuilt} lesson(s).")
