@@ -456,13 +456,8 @@ const nodes = {
   libraryLayout: document.querySelector("#library-layout"),
   developLayout: document.querySelector("#develop-layout"),
   modeButtons: document.querySelectorAll(".mode-btn"),
-  sidebarSections: {
-    search: document.querySelector(".search-box"),
-    topics: document.querySelector(".topic-list"),
-    materials: document.querySelector(".rail-materials"),
-    devLink: document.querySelector(".dev-link-card"),
-    searchStatus: document.querySelector(".status-card")
-  }
+  railLibrary: document.querySelector("#rail-library"),
+  railTop: document.querySelector(".rail-top")
 };
 
 function normalize(value) {
@@ -676,9 +671,8 @@ function setMode(mode) {
   nodes.modeButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.mode === mode);
   });
-  Object.values(nodes.sidebarSections).forEach((node) => {
-    if (node) node.classList.toggle("hidden", !isLibrary);
-  });
+  nodes.railLibrary?.classList.toggle("hidden", !isLibrary);
+  nodes.railTop?.classList.toggle("hidden", !isLibrary);
   if (!isLibrary) {
     nodes.sourceVideo.pause();
     syncDevelopFrame();
