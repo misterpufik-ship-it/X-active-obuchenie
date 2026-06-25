@@ -5,6 +5,7 @@ from __future__ import annotations
 import mimetypes
 import threading
 import traceback
+from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
@@ -148,6 +149,61 @@ def api_upload_video(project_id: str):
     data["videoFile"] = target.name
     data["status"] = "uploaded"
     data["statusMessage"] = f"Видео загружено: {file.filename}"
+    storage.save_project(data)
+    return jsonify(data)
+
+
+_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+
+
+def _save_step_image(project_id: str, data: dict, file_bytes: bytes, suffix: str, *, label: str) -> dict:
+    paths = storage.ensure_dirs(project_id)
+    uploads_dir = paths["uploads"]
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    existing = len(list(uploads_dir.glob(f"manual_*{suffix}")))
+    filename = f"manual_{stamp}_{existing + 1:02d}{suffix}"
+    target = uploads_dir / filename
+    target.write_bytes(file_bytes)
+
+    rel = storage.rel_path(project_id, target)
+    frame_entry = {"file": rel, "time": label, "source": "manual"}
+    frames = data.get("availableFrames") or []
+    if not any(item.get("file") == rel for item in frames):
+        frames.append(frame_entry)
+    data["availableFrames"] = frames
+    return {"file": rel, "label": label}
+
+
+@app.post("/api/projects/<project_id>/upload-image")
+def api_upload_image(project_id: str):
+    try:
+        data = storage.load_project(project_id)
+    except FileNotFoundError:
+        return jsonify({"error": "Проект не найден"}), 404
+
+    file = request.files.get("image")
+    if not file or not file.filename:
+        return jsonify({"error": "Выберите изображение."}), 400
+
+    suffix = Path(file.filename).suffix.lower() or ".png"
+    if suffix == ".jfif":
+        suffix = ".jpg"
+    if suffix not in _IMAGE_SUFFIXES:
+        return jsonify({"error": "Поддерживаются PNG, JPG, WEBP, GIF, BMP."}), 400
+
+    apply_step = (request.form.get("applyToStep") or "").strip()
+    label = (request.form.get("label") or "вручную").strip() or "вручную"
+    saved = _save_step_image(project_id, data, file.read(), suffix, label=label)
+
+    if apply_step:
+        for step in data.get("steps", []):
+            if step.get("id") == apply_step:
+                step["frameFile"] = saved["file"]
+                break
+
+    data["statusMessage"] = f"Изображение добавлено: {saved['file'].split('/')[-1]}"
     storage.save_project(data)
     return jsonify(data)
 

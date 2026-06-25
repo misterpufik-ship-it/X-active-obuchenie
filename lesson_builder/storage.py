@@ -39,6 +39,7 @@ def ensure_dirs(project_id: str) -> dict[str, Path]:
         "root": base,
         "frames": base / "frames",
         "frames_unique": base / "frames_unique",
+        "uploads": base / "uploads",
         "annotated": base / "annotated",
         "audio": base / "audio",
         "export": base / "export",

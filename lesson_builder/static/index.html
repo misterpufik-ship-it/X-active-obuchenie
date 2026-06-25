@@ -119,6 +119,12 @@
                 <button class="secondary-btn" id="apply-frame" type="button">Применить кадр</button>
               </div>
 
+              <div class="screenshot-row">
+                <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
+                <button class="secondary-btn" id="upload-image" type="button">Загрузить файл</button>
+                <span class="screenshot-hint">или <kbd>Ctrl</kbd>+<kbd>V</kbd> — вставка из Ножниц / буфера</span>
+              </div>
+
               <div id="annotation-dock">
                 <div class="panel-head annotation-head">
                   <h2 id="step-editor-title">Шаг</h2>
@@ -148,7 +154,7 @@
                   <canvas id="annotation-canvas"></canvas>
                   <button class="canvas-expand-btn" id="canvas-expand" type="button">Увеличить</button>
                 </div>
-                <p class="canvas-hint">Клик по элементу — выделение и перемещение. Сноска: зажмите на тексте, потяните к точке, отпустите. Двойной клик по тексту — редактирование. Delete — удалить.</p>
+                <p class="canvas-hint">Клик по элементу — выделение и перемещение. Сноска: зажмите на тексте, потяните к точке, отпустите. Двойной клик по тексту — редактирование. Delete — удалить. Скриншот: «Загрузить файл» или Ctrl+V.</p>
               </div>
 
               <div class="canvas-placeholder hidden" id="canvas-placeholder">

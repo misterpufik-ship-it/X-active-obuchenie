@@ -289,7 +289,7 @@ def process_project(project_id: str) -> dict[str, Any]:
     data["duration"] = estimate_duration(steps)
 
     storage.update_status(project_id, "processing", "Извлекаем кадры из видео…")
-    raw_frames = extract_frames(video_path, paths["frames"], interval=2.0)
+    raw_frames = extract_frames(video_path, paths["frames"], interval=3.0)
 
     storage.update_status(project_id, "processing", "Убираем похожие кадры…")
     unique_frames = dedupe_frames(raw_frames, paths["frames_unique"])
