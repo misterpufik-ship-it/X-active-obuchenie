@@ -43,6 +43,9 @@ def rebuild_published_catalog(*, force: bool = False) -> int:
     if not force and catalog_is_complete():
         return 0
 
+    if force:
+        publish._save_published([])
+
     for project_id in project_ids:
         publish.publish_to_site(project_id, skip_deploy=True)
     return len(project_ids)

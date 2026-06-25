@@ -27,7 +27,11 @@ def _load_published() -> list[dict[str, Any]]:
 
 def _save_published(items: list[dict[str, Any]]) -> None:
     PUBLISHED_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PUBLISHED_FILE.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    PUBLISHED_FILE.write_text(
+        json.dumps(items, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def publish_to_site(project_id: str, *, skip_deploy: bool = False) -> dict[str, Any]:
