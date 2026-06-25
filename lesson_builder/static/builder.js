@@ -167,6 +167,41 @@ function pulseAnnotation(label) {
   nodes.canvasWrap?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+function insertLabelIntoAction(label) {
+  const field = nodes.stepAction;
+  if (!field || !actionFieldEditing) return false;
+
+  const start = field.selectionStart ?? field.value.length;
+  const end = field.selectionEnd ?? start;
+  const value = field.value;
+  const before = value.slice(0, start);
+  const after = value.slice(end);
+
+  let insert = String(label);
+  const needSpaceBefore = before.length > 0 && !/\s$/.test(before);
+  const needSpaceAfter = after.length > 0 && !/^\s|[,.!?;:)]/.test(after);
+  if (needSpaceBefore) insert = ` ${insert}`;
+  if (needSpaceAfter) insert = `${insert} `;
+
+  field.value = before + insert + after;
+  const cursor = before.length + insert.length;
+  field.focus();
+  field.setSelectionRange(cursor, cursor);
+
+  const step = selectedStep();
+  if (step) step.action = field.value;
+  scheduleSaveStep();
+  return true;
+}
+
+function handleMarkerClick(label) {
+  if (insertLabelIntoAction(label)) {
+    nodes.statusMessage.textContent = `Метка «${label}» вставлена в действие.`;
+    return;
+  }
+  pulseAnnotation(label);
+}
+
 function renderActionMarkers() {
   if (!nodes.stepActionMarkers) return;
   const labels = frameAnnotationLabels();
@@ -174,14 +209,20 @@ function renderActionMarkers() {
     nodes.stepActionMarkers.innerHTML = `<span class="action-markers-hint">Нарисуйте рамку или круг — появится номер метки.</span>`;
     return;
   }
-  nodes.stepActionMarkers.innerHTML = `<span class="action-markers-label">Метки на скрине:</span>${labels
+  const insertMode = actionFieldEditing;
+  const labelText = insertMode ? "Вставить в действие:" : "Метки на скрине:";
+  const title = insertMode ? "Вставить номер в текст действия" : "Подсветить на скрине";
+  nodes.stepActionMarkers.innerHTML = `<span class="action-markers-label">${labelText}</span>${labels
     .map(
       (label) =>
-        `<button type="button" class="action-marker-btn" data-label="${escapeHtml(label)}" title="Подсветить на скрине">${escapeHtml(label)}</button>`
+        `<button type="button" class="action-marker-btn" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(label)}</button>`
     )
     .join("")}`;
   nodes.stepActionMarkers.querySelectorAll(".action-marker-btn").forEach((button) => {
-    button.addEventListener("click", () => pulseAnnotation(button.dataset.label));
+    button.addEventListener("mousedown", (event) => {
+      if (actionFieldEditing) event.preventDefault();
+    });
+    button.addEventListener("click", () => handleMarkerClick(button.dataset.label));
   });
 }
 
@@ -217,6 +258,7 @@ function renderActionView() {
 function setActionFieldEditing(editing) {
   actionFieldEditing = editing;
   nodes.actionField?.classList.toggle("is-editing", editing);
+  renderActionMarkers();
   if (!editing) renderActionView();
 }
 

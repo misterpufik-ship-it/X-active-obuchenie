@@ -794,6 +794,23 @@ dialog menu {
   color: var(--muted);
 }
 
+.action-field.is-editing .action-markers-label {
+  color: #1565c0;
+  font-weight: 700;
+}
+
+.action-field.is-editing .action-marker-btn {
+  border-color: #1565c0;
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.action-field.is-editing .action-marker-btn:hover {
+  background: #1565c0;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.25);
+}
+
 .action-marker-btn,
 .action-ref-btn {
   display: inline-flex;
