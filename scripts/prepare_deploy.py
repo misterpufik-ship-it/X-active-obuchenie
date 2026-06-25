@@ -30,6 +30,15 @@ def main() -> None:
         shutil.copy2(source, SITE_VIDEOS / "honest-sign-base.mp4")
         print("copied source_video.mp4 -> site/videos/honest-sign-base.mp4")
 
+    ozon_explicit = Path(
+        r"C:\Users\mrpuf\OneDrive\Рабочий стол\X-active Obuchenie\Videos\Видео_инструкция_поставка_на_озон.mp4"
+    )
+    if ozon_explicit.is_file():
+        shutil.copy2(ozon_explicit, SITE_VIDEOS / "ozon-supply.mp4")
+        print("copied ozon video -> site/videos/ozon-supply.mp4")
+    elif (SITE_VIDEOS / "ozon-supply.mp4").is_file():
+        print("ozon video already in site/videos")
+
 
 if __name__ == "__main__":
     main()

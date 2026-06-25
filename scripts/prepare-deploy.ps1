@@ -35,4 +35,10 @@ Copy-VideoMatch -Pattern "*Селсап*" -TargetName "wb-selsup-supply.mp4"
 Copy-VideoMatch -Pattern "*объедин*" -TargetName "merge-supply-card.mp4"
 Copy-VideoMatch -Pattern "" -TargetName "honest-sign-base.mp4" -FallbackPath (Join-Path $Root "source_video.mp4")
 
+$ozon = Get-ChildItem -LiteralPath $VideosDir -Filter "*.mp4" | Where-Object { $_.Length -gt 45MB -and $_.Length -lt 52MB } | Select-Object -First 1
+if ($ozon) {
+    Copy-Item -LiteralPath $ozon.FullName -Destination (Join-Path $SiteVideos "ozon-supply.mp4") -Force
+    Write-Host "Copied $($ozon.Name) -> site/videos/ozon-supply.mp4"
+}
+
 Write-Host "Deploy media prepared in site/videos"
