@@ -47,7 +47,8 @@ const state = {
   completed: {},
   mode: "library",
   editMode: false,
-  displayMode: "extended"
+  displayMode: "extended",
+  activeSlideIndex: 0
 };
 
 const nodes = {
@@ -367,15 +368,37 @@ function renderScreenshotFigureHtml(item, index, total, step) {
   </figure>`;
 }
 
-function renderWhyCompanionHtml(whyHtml) {
-  return `<div class="step-slide-side">
-    <div class="instruction-grid">
-      <div class="step-why-companion">
-        <span class="mini-label">Зачем</span>
-        <div class="step-why-companion-body">${whyHtml}</div>
-      </div>
-    </div>
-  </div>`;
+function slideIndexForLabel(label, screenshots = []) {
+  const index = screenshots.findIndex((shot) =>
+    shot.annotations?.some((item) => String(item.label) === String(label))
+  );
+  return index >= 0 ? index : 0;
+}
+
+function moveStepCopyToRow(index) {
+  const copy = nodes.stepCopy;
+  const rows = nodes.stepSlides?.querySelectorAll(".step-slide-row");
+  if (!copy || !rows?.length) return;
+
+  const safeIndex = Math.max(0, Math.min(rows.length - 1, index));
+  state.activeSlideIndex = safeIndex;
+
+  rows.forEach((row) => {
+    const rowIndex = Number(row.dataset.shotIndex);
+    const isActive = rowIndex === safeIndex;
+    row.classList.toggle("is-copy-active", isActive);
+    let side = row.querySelector(".step-slide-side");
+    if (isActive) {
+      if (!side) {
+        side = document.createElement("div");
+        side.className = "step-slide-side";
+        row.insertBefore(side, row.firstChild);
+      }
+      side.appendChild(copy);
+    } else if (side) {
+      side.remove();
+    }
+  });
 }
 
 function layoutStepSlides(screenshots, step, labels) {
@@ -387,17 +410,20 @@ function layoutStepSlides(screenshots, step, labels) {
   panel.classList.toggle("has-slide-rows", screenshots.length > 1);
   slides.innerHTML = "";
 
-  const whyHtml = renderRichText(step.why || "");
-
   if (!screenshots.length) {
     const row = document.createElement("div");
-    row.className = "step-slide-row";
-    row.appendChild(copy);
+    row.className = "step-slide-row is-copy-active";
+    row.dataset.shotIndex = "0";
+    const side = document.createElement("div");
+    side.className = "step-slide-side";
+    side.appendChild(copy);
+    row.appendChild(side);
     const gallery = document.createElement("div");
     gallery.className = "screenshot-gallery";
     gallery.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
     row.appendChild(gallery);
     slides.appendChild(row);
+    state.activeSlideIndex = 0;
     return;
   }
 
@@ -406,25 +432,20 @@ function layoutStepSlides(screenshots, step, labels) {
     row.className = "step-slide-row";
     row.dataset.shotIndex = String(index);
 
-    if (index === 0) {
-      row.appendChild(copy);
-    } else {
-      const side = document.createElement("div");
-      side.innerHTML = renderWhyCompanionHtml(whyHtml);
-      row.appendChild(side.firstElementChild);
-    }
-
     const gallery = document.createElement("div");
     gallery.className = "screenshot-gallery";
     gallery.innerHTML = renderScreenshotFigureHtml(item, index, screenshots.length, step);
     row.appendChild(gallery);
     slides.appendChild(row);
   });
+
+  const activeIndex = Math.min(state.activeSlideIndex ?? 0, screenshots.length - 1);
+  moveStepCopyToRow(activeIndex);
 }
 
 function scrollToSlideRow(row) {
   if (!row) return;
-  const anchor = row.querySelector(".step-copy, .step-slide-side, .step-why-companion");
+  const anchor = row.querySelector(".step-copy, .step-slide-side");
   const targetTop = (anchor || row).getBoundingClientRect().top + window.scrollY;
   const offset = 88;
   window.scrollTo({ top: Math.max(0, targetTop - offset), behavior: "smooth" });
@@ -456,7 +477,7 @@ function bindScreenshotHandlers(screenshots, labels) {
           marker.addEventListener("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
-            pulseScreenshotLabel(marker.dataset.label);
+            pulseScreenshotLabel(marker.dataset.label, screenshots);
           });
         });
       }
@@ -466,7 +487,7 @@ function bindScreenshotHandlers(screenshots, labels) {
   bindInteractiveLessonHandlers(screenshots, labels);
 }
 
-function pulseScreenshotLabel(label) {
+function pulseScreenshotLabel(label, screenshots = []) {
   if (pulseTimer) {
     clearTimeout(pulseTimer);
     pulseTimer = null;
@@ -475,8 +496,13 @@ function pulseScreenshotLabel(label) {
     node.classList.toggle("is-pulsing", node.dataset.label === String(label));
   });
   const target = document.querySelector(`.screenshot-marker[data-label="${CSS.escape(String(label))}"]`);
-  const row = target?.closest(".step-slide-row");
+  let row = target?.closest(".step-slide-row");
+  if (!row && screenshots.length) {
+    const slideIndex = slideIndexForLabel(label, screenshots);
+    row = nodes.stepSlides?.querySelector(`.step-slide-row[data-shot-index="${slideIndex}"]`);
+  }
   if (row) {
+    moveStepCopyToRow(Number(row.dataset.shotIndex));
     scrollToSlideRow(row);
   } else {
     target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -492,14 +518,14 @@ function bindInteractiveLessonHandlers(screenshots, labels) {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      pulseScreenshotLabel(button.dataset.label);
+      pulseScreenshotLabel(button.dataset.label, screenshots);
     });
   });
   document.querySelectorAll(".screenshot-marker").forEach((marker) => {
     marker.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      pulseScreenshotLabel(marker.dataset.label);
+      pulseScreenshotLabel(marker.dataset.label, screenshots);
     });
   });
 }
@@ -612,6 +638,7 @@ function renderLesson() {
     nodes.stepAction.innerHTML = renderRichText(step.action);
   }
   nodes.stepResult.innerHTML = renderRichText(step.result);
+  state.activeSlideIndex = 0;
   layoutStepSlides(screenshots, step, labels);
   bindScreenshotHandlers(screenshots, labels);
   nodes.stepComplete.checked = completedSet(material.id).has(state.currentStep);

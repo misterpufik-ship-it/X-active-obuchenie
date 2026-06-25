@@ -821,22 +821,17 @@ button {
 
 .step-slide-row {
   display: grid;
-  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
-.step-slide-side {
-  min-width: 0;
+.step-slide-row.is-copy-active {
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
 }
 
-.step-why-companion-body {
-  margin: 6px 0 0;
-  color: #344054;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: pre-wrap;
+.step-slide-side {
+  min-width: 0;
 }
 
 .instruction-grid {
@@ -1027,7 +1022,7 @@ button {
   text-align: center;
 }
 
-#guide-view.is-extended .step-slide-row {
+#guide-view.is-extended .step-slide-row.is-copy-active {
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
@@ -1212,11 +1207,11 @@ button {
     grid-template-columns: 1fr;
   }
 
-  #guide-view.is-extended .step-slide-row {
+  #guide-view.is-extended .step-slide-row.is-copy-active {
     grid-template-columns: 1fr;
   }
 
-  .step-slide-row {
+  .step-slide-row.is-copy-active {
     grid-template-columns: 1fr;
   }
 
