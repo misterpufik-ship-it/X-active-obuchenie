@@ -56,15 +56,17 @@ try {
 
     $localVideos = Join-Path $RepoRoot "site\videos"
     if (Test-Path $localVideos) {
-        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=20 $target "rm -rf /tmp/x-active-obuchenie-videos && mkdir -p /tmp/x-active-obuchenie-videos"
-        & scp -i $IdentityFile -o BatchMode=yes -r $localVideos "${target}:/tmp/x-active-obuchenie-videos/"
+        $uploadDir = "/srv/deploy/projects/$Project/video-upload"
+        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=20 $target "rm -rf $uploadDir && mkdir -p $uploadDir && chown -R deploy:deploy $uploadDir"
+        & scp -i $IdentityFile -o BatchMode=yes -r $localVideos "${target}:$uploadDir/"
         if ($LASTEXITCODE -ne 0) { throw "Video upload to VPS failed." }
+        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=20 $target "chown -R deploy:deploy $uploadDir"
 
         $videoSync = @(
-            "sudo -u deploy rsync -az /tmp/x-active-obuchenie-videos/videos/",
+            "sudo -u deploy rsync -az $uploadDir/videos/",
             "mrpuffch@mrpuffch.beget.tech:/home/m/mrpuffch/nostradamus-1503.ru/public_html/obuchenie/videos/"
         ) -join " "
-        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=60 $target $videoSync
+        & ssh -i $IdentityFile -o BatchMode=yes -o ConnectTimeout=120 $target $videoSync
         if ($LASTEXITCODE -ne 0) { throw "Video sync to BeGet failed." }
     }
 }
