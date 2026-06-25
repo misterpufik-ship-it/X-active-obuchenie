@@ -61,11 +61,25 @@ const nodes = {
   paletteRow: document.querySelector("#palette-row"),
   snippetDialog: document.querySelector("#snippet-dialog"),
   snippetOutput: document.querySelector("#snippet-output"),
+  appShell: document.querySelector("#app-shell"),
+  sidebarToggle: document.querySelector("#sidebar-toggle"),
+  sidebarRestore: document.querySelector("#sidebar-restore"),
+  annotationDock: document.querySelector("#annotation-dock"),
+  canvasWrap: document.querySelector("#canvas-wrap"),
+  canvasExpand: document.querySelector("#canvas-expand"),
+  canvasPlaceholder: document.querySelector("#canvas-placeholder"),
+  canvasLightbox: document.querySelector("#canvas-lightbox"),
+  canvasLightboxInner: document.querySelector("#canvas-lightbox-inner"),
+  canvasLightboxClose: document.querySelector("#canvas-lightbox-close"),
+  canvasPlaceholderClose: document.querySelector("#canvas-placeholder-close"),
+  publishButton: document.querySelector("#publish-project"),
 };
 
 let bgImage = null;
 let saveTimer = null;
 let canvasEditor = null;
+let annotationDockParent = null;
+let annotationDockNext = null;
 
 function initCanvasEditor() {
   if (canvasEditor) return canvasEditor;
@@ -431,16 +445,33 @@ document.querySelector("#save-project").addEventListener("click", async () => {
 });
 
 document.querySelector("#publish-project").addEventListener("click", async () => {
-  if (!state.project) return;
-  if (!confirm("Добавить урок в учебную базу site/? После этого задеплойте сайт на хостинг.")) return;
+  if (!state.project || nodes.publishButton.disabled) return;
+  const button = nodes.publishButton;
+  const originalText = button.textContent;
   try {
+    button.disabled = true;
+    button.textContent = "Публикация…";
     await flushPendingSave();
     const result = await api(`/api/projects/${state.project.id}/publish`, { method: "POST" });
     state.project = await api(`/api/projects/${state.project.id}`);
     renderEditor();
-    alert(`Урок добавлен в учебную базу.\nID: ${result.materialId}\nШагов: ${result.steps}\n\nЗадеплойте сайт, чтобы увидеть на хостинге.`);
+    const deployNote = result.deployed ? " Сайт задеплоен." : "";
+    const message = result.message || "Урок добавлен в учебную базу.";
+    nodes.statusMessage.textContent = `${message}${deployNote}`;
+    if (result.url) {
+      const link = document.createElement("a");
+      link.href = result.url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = " Открыть урок";
+      nodes.statusMessage.appendChild(document.createTextNode(""));
+      nodes.statusMessage.appendChild(link);
+    }
   } catch (error) {
-    alert(error.message);
+    nodes.statusMessage.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
   }
 });
 
@@ -625,6 +656,62 @@ function truncate(value, max) {
   const text = String(value || "");
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
+
+function isCanvasLightboxOpen() {
+  return nodes.canvasLightbox.classList.contains("is-open");
+}
+
+function openCanvasLightbox() {
+  if (!selectedStep() || isCanvasLightboxOpen()) return;
+  annotationDockParent = nodes.annotationDock.parentElement;
+  annotationDockNext = nodes.annotationDock.nextElementSibling;
+  nodes.canvasLightboxInner.appendChild(nodes.annotationDock);
+  nodes.canvasLightbox.classList.remove("hidden");
+  nodes.canvasLightbox.classList.add("is-open");
+  nodes.canvasPlaceholder.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+  canvasEditor?.redraw(bgImage);
+}
+
+function closeCanvasLightbox() {
+  if (!isCanvasLightboxOpen()) return;
+  if (annotationDockParent) {
+    if (annotationDockNext) {
+      annotationDockParent.insertBefore(nodes.annotationDock, annotationDockNext);
+    } else {
+      annotationDockParent.appendChild(nodes.annotationDock);
+    }
+  }
+  nodes.canvasLightbox.classList.add("hidden");
+  nodes.canvasLightbox.classList.remove("is-open");
+  nodes.canvasPlaceholder.classList.add("hidden");
+  document.body.style.overflow = "";
+  canvasEditor?.redraw(bgImage);
+}
+
+function setSidebarCollapsed(collapsed) {
+  nodes.appShell.classList.toggle("is-sidebar-collapsed", collapsed);
+  nodes.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+}
+
+nodes.sidebarToggle.addEventListener("click", () => setSidebarCollapsed(true));
+nodes.sidebarRestore.addEventListener("click", () => setSidebarCollapsed(false));
+nodes.canvasExpand.addEventListener("click", (event) => {
+  event.stopPropagation();
+  openCanvasLightbox();
+});
+nodes.canvas.addEventListener("dblclick", (event) => {
+  event.preventDefault();
+  openCanvasLightbox();
+});
+nodes.canvasLightboxClose.addEventListener("click", closeCanvasLightbox);
+nodes.canvasPlaceholderClose.addEventListener("click", closeCanvasLightbox);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && isCanvasLightboxOpen()) {
+    closeCanvasLightbox();
+  }
+});
 
 nodes.canvas.addEventListener("mouseup", () => {
   setTimeout(updatePaletteVisibility, 0);

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from . import storage
+from .deploy_site import auto_deploy
 from .export import render_annotated_image
 
 SITE_ROOT = Path(__file__).resolve().parents[1] / "site"
@@ -94,9 +95,16 @@ def publish_to_site(project_id: str) -> dict[str, Any]:
     data["publishedId"] = material_id
     storage.save_project(data)
 
+    deploy_result = auto_deploy(material_id)
+    status_message = deploy_result.get("message") or f"Опубликовано: {material_id}"
+    data["statusMessage"] = status_message
+    storage.save_project(data)
+
     return {
         "materialId": material_id,
         "sitePath": str(PUBLISHED_FILE.relative_to(SITE_ROOT.parent)),
         "steps": len(material_steps),
-        "url": f"https://nostradamus-1503.ru/obuchenie/?lesson={material_id}",
+        "url": deploy_result.get("url") or f"https://nostradamus-1503.ru/obuchenie/?lesson={material_id}",
+        "deployed": deploy_result.get("deployed", False),
+        "message": status_message,
     }

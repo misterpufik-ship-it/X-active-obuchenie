@@ -7,30 +7,41 @@
     <link rel="stylesheet" href="static/builder.css" />
   </head>
   <body>
-    <div class="app">
-      <aside class="sidebar">
-        <div class="brand">
-          <div class="brand-mark">XA</div>
-          <div>
-            <p class="eyebrow">Инструмент</p>
-            <h1>Разработка урока</h1>
+    <div class="app" id="app-shell">
+      <aside class="sidebar" id="sidebar" aria-label="Проекты">
+        <div class="sidebar-top">
+          <div class="brand">
+            <div class="brand-mark">XA</div>
+            <div>
+              <p class="eyebrow">Инструмент</p>
+              <h1>Разработка урока</h1>
+            </div>
+          </div>
+          <button class="sidebar-collapse" id="sidebar-toggle" type="button" aria-expanded="true" aria-controls="sidebar" title="Свернуть меню">
+            <span aria-hidden="true">‹</span>
+          </button>
+        </div>
+
+        <div class="sidebar-scroll">
+          <a class="back-link" id="site-home-link" href="https://nostradamus-1503.ru/obuchenie/" target="_blank" rel="noreferrer">← Учебный центр</a>
+
+          <button class="primary-btn" id="new-project" type="button">+ Новый проект</button>
+
+          <div class="project-list-wrap">
+            <p class="section-label">Проекты</p>
+            <div class="project-list" id="project-list"></div>
+          </div>
+
+          <div class="hint-card">
+            <strong>Как работает</strong>
+            <p>Заполните поля → отметьте экран → «Добавить в учебную базу» — урок появится на сайте автоматически.</p>
           </div>
         </div>
-
-        <a class="back-link" id="site-home-link" href="https://nostradamus-1503.ru/obuchenie/" target="_blank" rel="noreferrer">← Учебный центр</a>
-
-        <button class="primary-btn" id="new-project" type="button">+ Новый проект</button>
-
-        <div class="project-list-wrap">
-          <p class="section-label">Проекты</p>
-          <div class="project-list" id="project-list"></div>
-        </div>
-
-        <div class="hint-card">
-          <strong>Как работает</strong>
-          <p>Заполните поля на любом этапе → отметьте экран → «Сохранить» → «Добавить в учебную базу».</p>
-        </div>
       </aside>
+
+      <button class="sidebar-restore" id="sidebar-restore" type="button" aria-label="Показать меню" title="Показать меню">
+        <span aria-hidden="true">›</span>
+      </button>
 
       <main class="workspace" id="workspace">
         <section class="empty-state" id="empty-state">
@@ -53,15 +64,15 @@
             </div>
           </header>
 
-          <div class="meta-grid meta-grid-wide">
+          <div class="meta-grid">
             <label>Тема<input id="field-topic" type="text" /></label>
             <label>Роль<input id="field-role" type="text" /></label>
             <label>Длительность<input id="field-duration" type="text" placeholder="15-20 минут" /></label>
-            <label class="span-2">Описание<textarea id="field-description" rows="2"></textarea></label>
-            <label class="span-2">Примечание к видео<textarea id="field-video-note" rows="2"></textarea></label>
+            <label class="span-3">Описание<textarea id="field-description" rows="2"></textarea></label>
+            <label>Примечание к видео<textarea id="field-video-note" rows="2"></textarea></label>
             <label class="span-2">Ключевые слова (через запятую)<input id="field-keywords" type="text" /></label>
-            <label class="span-2">Чеклист (по строке)<textarea id="field-checklist" rows="3"></textarea></label>
-            <label class="span-2">Типичные ошибки (заголовок | текст, по строке)<textarea id="field-issues" rows="3"></textarea></label>
+            <label>Чеклист (по строке)<textarea id="field-checklist" rows="2"></textarea></label>
+            <label class="span-2">Типичные ошибки (заголовок | текст, по строке)<textarea id="field-issues" rows="2"></textarea></label>
           </div>
 
           <section class="panel upload-panel">
@@ -93,36 +104,12 @@
             </section>
 
             <section class="panel step-editor">
-              <div class="panel-head">
-                <h2 id="step-editor-title">Шаг</h2>
-                <div class="toolbar">
-                  <button class="tool-btn is-active" data-tool="select" type="button">Выбор</button>
-                  <button class="tool-btn" data-tool="arrow" type="button">Стрелка</button>
-                  <button class="tool-btn" data-tool="rect" type="button">Рамка</button>
-                  <button class="tool-btn" data-tool="circle" type="button">Круг</button>
-                  <button class="tool-btn" data-tool="text" type="button">Текст</button>
-                  <button class="tool-btn" data-tool="callout" type="button">Сноска</button>
-                  <button class="ghost-btn" id="delete-annotation" type="button">Удалить элемент</button>
-                  <button class="ghost-btn" id="undo-annotation" type="button">Отмена</button>
-                  <button class="ghost-btn" id="clear-annotations" type="button">Очистить</button>
-                </div>
-              </div>
-
-              <div class="color-row">
-                <span class="color-label">Цвет:</span>
-                <div class="color-toolbar" id="color-toolbar"></div>
-              </div>
-              <div class="color-row color-row-palette hidden" id="palette-row">
-                <span class="color-label">Цвет элемента:</span>
-                <div class="color-palette" id="color-palette"></div>
-              </div>
-
-              <div class="step-fields">
+              <div class="step-fields meta-grid step-fields-grid">
                 <label>Заголовок<input id="step-title" type="text" /></label>
                 <label>Зачем этот шаг<textarea id="step-why" rows="2"></textarea></label>
-                <label>Действие<textarea id="step-action" rows="3"></textarea></label>
                 <label>Комментарий<textarea id="step-comment" rows="2"></textarea></label>
-                <label>Готово, если<textarea id="step-result" rows="2"></textarea></label>
+                <label class="span-3">Действие<textarea id="step-action" rows="3"></textarea></label>
+                <label class="span-3">Готово, если<textarea id="step-result" rows="2"></textarea></label>
               </div>
 
               <div class="frame-picker">
@@ -132,14 +119,51 @@
                 <button class="secondary-btn" id="apply-frame" type="button">Применить кадр</button>
               </div>
 
-              <div class="canvas-wrap">
-                <canvas id="annotation-canvas"></canvas>
+              <div id="annotation-dock">
+                <div class="panel-head annotation-head">
+                  <h2 id="step-editor-title">Шаг</h2>
+                  <div class="toolbar" id="annotation-toolbar">
+                    <button class="tool-btn is-active" data-tool="select" type="button">Выбор</button>
+                    <button class="tool-btn" data-tool="arrow" type="button">Стрелка</button>
+                    <button class="tool-btn" data-tool="rect" type="button">Рамка</button>
+                    <button class="tool-btn" data-tool="circle" type="button">Круг</button>
+                    <button class="tool-btn" data-tool="text" type="button">Текст</button>
+                    <button class="tool-btn" data-tool="callout" type="button">Сноска</button>
+                    <button class="ghost-btn" id="delete-annotation" type="button">Удалить</button>
+                    <button class="ghost-btn" id="undo-annotation" type="button">Отмена</button>
+                    <button class="ghost-btn" id="clear-annotations" type="button">Очистить</button>
+                  </div>
+                </div>
+
+                <div class="color-row">
+                  <span class="color-label">Цвет:</span>
+                  <div class="color-toolbar" id="color-toolbar"></div>
+                </div>
+                <div class="color-row color-row-palette hidden" id="palette-row">
+                  <span class="color-label">Цвет элемента:</span>
+                  <div class="color-palette" id="color-palette"></div>
+                </div>
+
+                <div class="canvas-wrap" id="canvas-wrap" title="Двойной клик — открыть в большом размере">
+                  <canvas id="annotation-canvas"></canvas>
+                  <button class="canvas-expand-btn" id="canvas-expand" type="button">Увеличить</button>
+                </div>
+                <p class="canvas-hint">Клик по скрину — полноэкранная разметка. Сноска: клик на текст, потяните к точке. Delete — удалить элемент.</p>
               </div>
-              <p class="canvas-hint">Выбор — перемещение и растягивание. Сноска — клик на текст, потяните к нужной точке. Delete — удалить выбранный элемент.</p>
+
+              <div class="canvas-placeholder hidden" id="canvas-placeholder">
+                <p>Скриншот открыт в полноэкранном режиме для разметки.</p>
+                <button class="secondary-btn" id="canvas-placeholder-close" type="button">Вернуть сюда</button>
+              </div>
             </section>
           </div>
         </section>
       </main>
+    </div>
+
+    <div class="canvas-lightbox hidden" id="canvas-lightbox" role="dialog" aria-modal="true" aria-label="Разметка скриншота">
+      <div class="canvas-lightbox-inner" id="canvas-lightbox-inner"></div>
+      <button class="canvas-lightbox-close" id="canvas-lightbox-close" type="button" aria-label="Закрыть">✕</button>
     </div>
 
     <dialog id="snippet-dialog">
