@@ -376,14 +376,14 @@ function slideIndexForLabel(label, screenshots = []) {
   return index >= 0 ? index : 0;
 }
 
-function alignCopyToSlide(index) {
-  const column = nodes.stepCopyColumn;
+function setActiveSlide(index, screenshots = [], { scroll = false } = {}) {
   const slides = nodes.stepSlides;
-  if (!column || !slides) return;
+  if (!slides) return;
 
   const rows = slides.querySelectorAll(".step-slide-row");
   if (!rows.length) {
-    column.style.transform = "";
+    state.activeSlideIndex = 0;
+    if (nodes.stepCopyColumn) nodes.stepCopyColumn.style.transform = "";
     return;
   }
 
@@ -391,11 +391,30 @@ function alignCopyToSlide(index) {
   state.activeSlideIndex = safeIndex;
 
   rows.forEach((row) => {
-    row.classList.toggle("is-slide-active", Number(row.dataset.shotIndex) === safeIndex);
+    const isActive = Number(row.dataset.shotIndex) === safeIndex;
+    row.classList.toggle("is-slide-active", isActive);
+    if (slides.classList.contains("has-carousel")) {
+      row.hidden = !isActive;
+    }
   });
 
-  const slide = rows[safeIndex];
-  column.style.transform = safeIndex > 0 ? `translateY(${slide.offsetTop}px)` : "";
+  const counter = slides.querySelector(".slide-carousel-counter");
+  if (counter) {
+    counter.textContent = `${safeIndex + 1} / ${rows.length}`;
+  }
+
+  const prevBtn = slides.querySelector(".slide-carousel-prev");
+  const nextBtn = slides.querySelector(".slide-carousel-next");
+  if (prevBtn) prevBtn.disabled = safeIndex <= 0;
+  if (nextBtn) nextBtn.disabled = safeIndex >= rows.length - 1;
+
+  if (nodes.stepCopyColumn) nodes.stepCopyColumn.style.transform = "";
+
+  if (scroll) {
+    const anchor = nodes.stepCopyColumn || slides;
+    const targetTop = anchor.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: Math.max(0, targetTop - 72), behavior: "smooth" });
+  }
 }
 
 function layoutStepSlides(screenshots, step, labels) {
@@ -405,39 +424,47 @@ function layoutStepSlides(screenshots, step, labels) {
 
   const multi = screenshots.length > 1;
   panel.classList.toggle("has-slide-rows", multi);
+  slides.className = multi ? "step-slides has-carousel" : "step-slides";
   slides.innerHTML = "";
 
   if (!screenshots.length) {
     slides.innerHTML = `<div class="screenshot-gallery"><div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div></div>`;
     state.activeSlideIndex = 0;
-    alignCopyToSlide(0);
     return;
+  }
+
+  let viewport = slides;
+  if (multi) {
+    slides.innerHTML = `
+      <div class="slide-carousel-toolbar">
+        <button type="button" class="slide-carousel-btn slide-carousel-prev" aria-label="Предыдущий скриншот">‹</button>
+        <span class="slide-carousel-counter"></span>
+        <button type="button" class="slide-carousel-btn slide-carousel-next" aria-label="Следующий скриншот">›</button>
+      </div>
+      <div class="slide-carousel-viewport"></div>
+    `;
+    viewport = slides.querySelector(".slide-carousel-viewport");
   }
 
   screenshots.forEach((item, index) => {
     const row = document.createElement("div");
     row.className = "step-slide-row";
     row.dataset.shotIndex = String(index);
+    if (multi) row.hidden = true;
 
     const gallery = document.createElement("div");
     gallery.className = "screenshot-gallery";
     gallery.innerHTML = renderScreenshotFigureHtml(item, index, screenshots.length, step);
     row.appendChild(gallery);
-    slides.appendChild(row);
+    viewport.appendChild(row);
   });
 
   const activeIndex = Math.min(state.activeSlideIndex ?? 0, screenshots.length - 1);
-  alignCopyToSlide(activeIndex);
+  setActiveSlide(activeIndex, screenshots);
 }
 
-function scrollToSlide(index) {
-  const slide = nodes.stepSlides?.querySelector(`.step-slide-row[data-shot-index="${index}"]`);
-  if (!slide) return;
-  alignCopyToSlide(index);
-  const anchor = nodes.stepCopyColumn || slide;
-  const targetTop = anchor.getBoundingClientRect().top + window.scrollY;
-  const offset = 72;
-  window.scrollTo({ top: Math.max(0, targetTop - offset), behavior: "smooth" });
+function goToSlide(index, screenshots, { scroll = false } = {}) {
+  setActiveSlide(index, screenshots, { scroll });
 }
 
 function bindScreenshotHandlers(screenshots, labels) {
@@ -451,6 +478,13 @@ function bindScreenshotHandlers(screenshots, labels) {
       nodes.lightboxCaption.textContent = item.caption || "";
       nodes.lightbox.hidden = false;
     });
+  });
+
+  nodes.stepSlides?.querySelector(".slide-carousel-prev")?.addEventListener("click", () => {
+    goToSlide(state.activeSlideIndex - 1, screenshots);
+  });
+  nodes.stepSlides?.querySelector(".slide-carousel-next")?.addEventListener("click", () => {
+    goToSlide(state.activeSlideIndex + 1, screenshots);
   });
 
   nodes.stepSlides?.querySelectorAll("img[data-shot-index]").forEach((img) => {
@@ -491,7 +525,7 @@ function pulseScreenshotLabel(label, screenshots = []) {
     if (row) slideIndex = Number(row.dataset.shotIndex);
   }
   if (screenshots.length) {
-    scrollToSlide(slideIndex);
+    goToSlide(slideIndex, screenshots, { scroll: true });
   } else {
     target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -956,7 +990,7 @@ async function bootstrap() {
 bootstrap();
 
 window.addEventListener("resize", () => {
-  if (state.activeSlideIndex > 0) {
-    alignCopyToSlide(state.activeSlideIndex);
+  if (state.activeSlideIndex > 0 && nodes.stepCopyColumn) {
+    nodes.stepCopyColumn.style.transform = "";
   }
 });
