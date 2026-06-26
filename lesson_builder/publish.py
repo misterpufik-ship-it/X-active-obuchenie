@@ -11,7 +11,6 @@ from PIL import Image
 
 from . import storage
 from .deploy_site import auto_deploy
-from .export import render_annotated_image
 
 SITE_ROOT = Path(__file__).resolve().parents[1] / "site"
 PUBLISHED_FILE = SITE_ROOT / "published-lessons.json"
@@ -69,15 +68,13 @@ def publish_to_site(project_id: str, *, skip_deploy: bool = False) -> dict[str, 
         step_images: list[dict[str, str]] = []
         for frame_index, frame in enumerate(storage.get_step_frames(step), start=1):
             asset_name = f"{material_id}_step_{index:02d}_{frame_index:02d}.png"
-            rendered = render_annotated_image(
-                project_id,
-                frame["frameFile"],
-                frame.get("annotations"),
-                target_name=f"{step['id']}_{frame.get('id', frame_index)}",
-            )
-            shutil.copy2(rendered, ASSETS_DIR / asset_name)
+            source = storage.project_dir(project_id) / frame["frameFile"]
+            if not source.is_file():
+                raise FileNotFoundError(source)
+            # Keep PNG clean for the site — interactive markers are rendered in app.js.
+            shutil.copy2(source, ASSETS_DIR / asset_name)
             deploy_files.append(f"assets/{asset_name}")
-            with Image.open(rendered) as img:
+            with Image.open(source) as img:
                 image_width, image_height = img.size
             annotations = frame.get("annotations") or []
             interactive_annotations = [
