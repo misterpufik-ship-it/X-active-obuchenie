@@ -38,6 +38,13 @@ button {
   grid-template-columns: 300px minmax(0, 1fr);
 }
 
+.workspace {
+  padding: 12px 14px 20px;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
 .app.is-sidebar-collapsed {
   grid-template-columns: 0 minmax(0, 1fr);
 }
@@ -284,7 +291,9 @@ button {
 }
 
 .workspace {
-  padding: 22px;
+  padding: 12px 14px 20px;
+  min-width: 0;
+  width: 100%;
 }
 
 .empty-state,
@@ -305,7 +314,9 @@ button {
 }
 
 .editor {
-  padding: 20px;
+  padding: 16px;
+  width: 100%;
+  max-width: none;
 }
 
 .editor-header {
@@ -464,16 +475,22 @@ button {
 
 .editor-grid {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 16px;
-  margin-top: 16px;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+.steps-panel,
+.step-editor {
+  min-width: 0;
 }
 
 .steps-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 72vh;
+  max-height: min(72vh, 900px);
   overflow: auto;
 }
 
@@ -905,6 +922,31 @@ dialog menu {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+
+.action-marker-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.action-marker-remove {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #d0d7de;
+  border-radius: 999px;
+  background: #fff;
+  color: #65717f;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.action-marker-remove:hover {
+  background: #ffebee;
+  border-color: #ef9a9a;
+  color: #c62828;
 }
 
 .action-markers-label,

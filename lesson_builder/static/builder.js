@@ -459,6 +459,36 @@ function handleMarkerClick(label) {
   }
 }
 
+function removeLabelFromStep(label) {
+  const step = selectedStep();
+  if (!step) return;
+  const key = String(label || "").trim();
+  if (!key) return;
+  if (!confirm(`Удалить метку ${markerToken(key)} со всех скринов шага?`)) return;
+
+  syncCanvasToCurrentFrame();
+  normalizeStepFrames(step).forEach((frame) => {
+    frame.annotations = (frame.annotations || []).filter((item) => String(item.label) !== key);
+  });
+
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const updatedAction = getActionHtml().replace(new RegExp(`\\{${escaped}\\}`, "g"), "");
+  setActionHtml(updatedAction);
+  step.action = getActionHtml();
+  syncStepLegacyFields(step);
+
+  const frame = selectedStepFrame(step);
+  const editor = canvasEditor;
+  if (editor && frame) {
+    editor.setAnnotations(frame.annotations || []);
+    editor.redraw(bgImage);
+  }
+
+  scheduleSaveStep();
+  renderActionMarkers();
+  nodes.statusMessage.textContent = `Метка ${markerToken(key)} удалена.`;
+}
+
 function renderActionMarkers() {
   if (!nodes.stepActionMarkers) return;
   const labels = stepAnnotationLabels();
@@ -479,7 +509,10 @@ function renderActionMarkers() {
         : actionFieldEditing
           ? "Вставить номер в текст действия"
           : "Добавить номер в текст действия";
-      return `<button type="button" class="action-marker-btn ${stateClass}" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(markerToken(label))}</button>`;
+      return `<span class="action-marker-chip">
+        <button type="button" class="action-marker-btn ${stateClass}" data-label="${escapeHtml(label)}" title="${title}">${escapeHtml(markerToken(label))}</button>
+        <button type="button" class="action-marker-remove" data-label="${escapeHtml(label)}" title="Удалить метку" aria-label="Удалить метку ${escapeHtml(label)}">×</button>
+      </span>`;
     })
     .join("")}`;
   nodes.stepActionMarkers.querySelectorAll(".action-marker-btn").forEach((button) => {
@@ -487,6 +520,17 @@ function renderActionMarkers() {
       event.preventDefault();
     });
     button.addEventListener("click", () => handleMarkerClick(button.dataset.label));
+  });
+  nodes.stepActionMarkers.querySelectorAll(".action-marker-remove").forEach((button) => {
+    button.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      removeLabelFromStep(button.dataset.label);
+    });
   });
 }
 
