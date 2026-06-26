@@ -418,6 +418,12 @@ button {
   font-size: 18px;
 }
 
+.panel-optional {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .status-badge {
   display: inline-block;
   padding: 4px 10px;

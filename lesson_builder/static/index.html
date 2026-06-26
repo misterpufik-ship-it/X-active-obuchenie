@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Разработка урока — X-active</title>
-    <link rel="stylesheet" href="static/builder.css?v=20260630b" />
+    <link rel="stylesheet" href="static/builder.css?v=20260630d" />
   </head>
   <body>
     <div class="app" id="app-shell">
@@ -34,7 +34,7 @@
 
           <div class="hint-card">
             <strong>Как работает</strong>
-            <p>Заполните поля → отметьте экран → «Добавить в учебную базу» — урок появится на сайте автоматически.</p>
+            <p>+ Шаг → скриншот (+ Скриншот или Ctrl+V) → разметка → «Добавить в учебную базу». Видео необязательно.</p>
           </div>
         </div>
       </aside>
@@ -78,10 +78,10 @@
 
           <section class="panel upload-panel">
             <div class="panel-head">
-              <h2>1. Видео и обработка</h2>
+              <h2>1. Видео <span class="panel-optional">необязательно</span></h2>
               <span class="status-badge" id="project-status">draft</span>
             </div>
-            <p class="status-text" id="status-message">Загрузите видео.</p>
+            <p class="status-text" id="status-message">Добавьте шаги и скриншоты. Видео — если нужна автоматическая расшифровка.</p>
             <div class="upload-row">
               <input id="video-input" type="file" accept="video/*" />
               <button class="primary-btn" id="upload-video" type="button">Загрузить видео</button>
@@ -131,7 +131,7 @@
                 <label class="span-3">Готово, если<div id="step-result" class="rich-field" contenteditable="true" data-placeholder="Критерий готовности"></div></label>
               </div>
 
-              <div class="frame-picker">
+              <div class="frame-picker hidden" id="frame-picker-row">
                 <label>Кадр из видео
                   <select id="frame-select"></select>
                 </label>
@@ -142,7 +142,7 @@
                 <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" hidden />
                 <button class="secondary-btn" id="upload-image" type="button">+ Скриншот</button>
                 <button class="ghost-btn" id="delete-step-frame" type="button">Удалить скрин</button>
-                <span class="screenshot-hint">кликните по области скрина, затем <kbd>Ctrl</kbd>+<kbd>V</kbd></span>
+                <span class="screenshot-hint">файл или <kbd>Ctrl</kbd>+<kbd>V</kbd> — видео не нужно</span>
               </div>
 
               <div class="step-frames-strip" id="step-frames-strip" aria-label="Скриншоты шага" tabindex="0"></div>

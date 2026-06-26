@@ -66,6 +66,7 @@ const nodes = {
   stepComment: document.querySelector("#step-comment"),
   stepResult: document.querySelector("#step-result"),
   frameSelect: document.querySelector("#frame-select"),
+  framePickerRow: document.querySelector("#frame-picker-row"),
   stepFramesStrip: document.querySelector("#step-frames-strip"),
   canvas: document.querySelector("#annotation-canvas"),
   colorToolbar: document.querySelector("#color-toolbar"),
@@ -828,6 +829,8 @@ function renderEditor() {
 
   renderStepsList();
   renderFrameSelect();
+  updateFramePickerVisibility();
+  updateVideoControls();
   updatePublishControls();
   void renderStepEditor();
   updateRecleanButton();
@@ -850,7 +853,7 @@ function updatePublishControls() {
 function renderStepsList() {
   const steps = state.project.steps || [];
   if (!steps.length) {
-    nodes.stepsList.innerHTML = `<p class="status-text">Добавьте шаг вручную или запустите обработку видео.</p>`;
+    nodes.stepsList.innerHTML = `<p class="status-text">Нажмите «+ Шаг», затем «+ Скриншот» или Ctrl+V. Видео необязательно.</p>`;
     return;
   }
 
@@ -920,12 +923,24 @@ function frameOptionLabel(frame) {
 function renderFrameSelect() {
   const frames = state.project.availableFrames || [];
   if (!frames.length) {
-    nodes.frameSelect.innerHTML = `<option value="">Нет кадров — загрузите видео или скриншот</option>`;
+    nodes.frameSelect.innerHTML = `<option value="">Нет кадров — загрузите видео или добавьте скриншот</option>`;
     return;
   }
   nodes.frameSelect.innerHTML = frames
     .map((frame) => `<option value="${frame.file}">${frameOptionLabel(frame)}</option>`)
     .join("");
+}
+
+function updateFramePickerVisibility() {
+  const frames = state.project?.availableFrames || [];
+  const hasVideoFrames = frames.some((frame) => frame.source !== "manual" && !String(frame.time || "").includes("вручную"));
+  nodes.framePickerRow?.classList.toggle("hidden", !hasVideoFrames);
+}
+
+function updateVideoControls() {
+  const hasVideo = Boolean(state.project?.videoFile);
+  const busy = state.project?.status === "processing";
+  document.querySelector("#process-video")?.toggleAttribute("disabled", !hasVideo || busy);
 }
 
 async function renderStepEditor() {
@@ -974,7 +989,7 @@ async function loadCanvasImage(frame) {
     ctx.fillRect(0, 0, nodes.canvas.width, nodes.canvas.height);
     ctx.fillStyle = "#65717f";
     ctx.font = "18px Segoe UI";
-    ctx.fillText("Добавьте скриншот: + Скриншот, Ctrl+V или кадр из видео", 36, 48);
+    ctx.fillText("Добавьте скриншот: «+ Скриншот», Ctrl+V или перетащите файл. Видео не нужно.", 36, 48);
     return;
   }
 
@@ -1216,15 +1231,10 @@ document.querySelector("#add-step").addEventListener("click", async () => {
     frames: [],
     annotations: [],
   };
-  const firstFrame = state.project.availableFrames?.[0]?.file;
-  if (firstFrame) {
-    step.frames.push({ id: frameId(), frameFile: firstFrame, annotations: [] });
-    step.frameFile = firstFrame;
-  }
   state.project.steps = [...(state.project.steps || []), step];
   renumberSteps();
   state.selectedStepId = step.id;
-  state.selectedFrameId = step.frames[0]?.id || null;
+  state.selectedFrameId = null;
   await saveProjectMeta();
   renderEditor();
 });
