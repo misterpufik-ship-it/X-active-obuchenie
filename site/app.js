@@ -84,6 +84,7 @@ const nodes = {
   stepAction: document.querySelector("#step-action"),
   stepResult: document.querySelector("#step-result"),
   stepPanel: document.querySelector("#step-panel"),
+  stepCopyColumn: document.querySelector("#step-copy-column"),
   stepCopy: document.querySelector("#step-copy"),
   stepSlides: document.querySelector("#step-slides"),
   stepComplete: document.querySelector("#step-complete"),
@@ -375,55 +376,41 @@ function slideIndexForLabel(label, screenshots = []) {
   return index >= 0 ? index : 0;
 }
 
-function moveStepCopyToRow(index) {
-  const copy = nodes.stepCopy;
-  const rows = nodes.stepSlides?.querySelectorAll(".step-slide-row");
-  if (!copy || !rows?.length) return;
+function alignCopyToSlide(index) {
+  const column = nodes.stepCopyColumn;
+  const slides = nodes.stepSlides;
+  if (!column || !slides) return;
+
+  const rows = slides.querySelectorAll(".step-slide-row");
+  if (!rows.length) {
+    column.style.transform = "";
+    return;
+  }
 
   const safeIndex = Math.max(0, Math.min(rows.length - 1, index));
   state.activeSlideIndex = safeIndex;
 
   rows.forEach((row) => {
-    const rowIndex = Number(row.dataset.shotIndex);
-    const isActive = rowIndex === safeIndex;
-    row.classList.toggle("is-copy-active", isActive);
-    let side = row.querySelector(".step-slide-side");
-    if (isActive) {
-      if (!side) {
-        side = document.createElement("div");
-        side.className = "step-slide-side";
-        row.insertBefore(side, row.firstChild);
-      }
-      side.appendChild(copy);
-    } else if (side) {
-      side.remove();
-    }
+    row.classList.toggle("is-slide-active", Number(row.dataset.shotIndex) === safeIndex);
   });
+
+  const slide = rows[safeIndex];
+  column.style.transform = safeIndex > 0 ? `translateY(${slide.offsetTop}px)` : "";
 }
 
 function layoutStepSlides(screenshots, step, labels) {
   const panel = nodes.stepPanel;
   const slides = nodes.stepSlides;
-  const copy = nodes.stepCopy;
-  if (!panel || !slides || !copy) return;
+  if (!panel || !slides) return;
 
-  panel.classList.toggle("has-slide-rows", screenshots.length > 1);
+  const multi = screenshots.length > 1;
+  panel.classList.toggle("has-slide-rows", multi);
   slides.innerHTML = "";
 
   if (!screenshots.length) {
-    const row = document.createElement("div");
-    row.className = "step-slide-row is-copy-active";
-    row.dataset.shotIndex = "0";
-    const side = document.createElement("div");
-    side.className = "step-slide-side";
-    side.appendChild(copy);
-    row.appendChild(side);
-    const gallery = document.createElement("div");
-    gallery.className = "screenshot-gallery";
-    gallery.innerHTML = `<div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div>`;
-    row.appendChild(gallery);
-    slides.appendChild(row);
+    slides.innerHTML = `<div class="screenshot-gallery"><div class="screenshot-frame"><p class="screenshot-empty">Скриншот не добавлен</p></div></div>`;
     state.activeSlideIndex = 0;
+    alignCopyToSlide(0);
     return;
   }
 
@@ -440,14 +427,16 @@ function layoutStepSlides(screenshots, step, labels) {
   });
 
   const activeIndex = Math.min(state.activeSlideIndex ?? 0, screenshots.length - 1);
-  moveStepCopyToRow(activeIndex);
+  alignCopyToSlide(activeIndex);
 }
 
-function scrollToSlideRow(row) {
-  if (!row) return;
-  const anchor = row.querySelector(".step-copy, .step-slide-side");
-  const targetTop = (anchor || row).getBoundingClientRect().top + window.scrollY;
-  const offset = 88;
+function scrollToSlide(index) {
+  const slide = nodes.stepSlides?.querySelector(`.step-slide-row[data-shot-index="${index}"]`);
+  if (!slide) return;
+  alignCopyToSlide(index);
+  const anchor = nodes.stepCopyColumn || slide;
+  const targetTop = anchor.getBoundingClientRect().top + window.scrollY;
+  const offset = 72;
   window.scrollTo({ top: Math.max(0, targetTop - offset), behavior: "smooth" });
 }
 
@@ -496,14 +485,13 @@ function pulseScreenshotLabel(label, screenshots = []) {
     node.classList.toggle("is-pulsing", node.dataset.label === String(label));
   });
   const target = document.querySelector(`.screenshot-marker[data-label="${CSS.escape(String(label))}"]`);
-  let row = target?.closest(".step-slide-row");
-  if (!row && screenshots.length) {
-    const slideIndex = slideIndexForLabel(label, screenshots);
-    row = nodes.stepSlides?.querySelector(`.step-slide-row[data-shot-index="${slideIndex}"]`);
+  let slideIndex = slideIndexForLabel(label, screenshots);
+  if (target) {
+    const row = target.closest(".step-slide-row");
+    if (row) slideIndex = Number(row.dataset.shotIndex);
   }
-  if (row) {
-    moveStepCopyToRow(Number(row.dataset.shotIndex));
-    scrollToSlideRow(row);
+  if (screenshots.length) {
+    scrollToSlide(slideIndex);
   } else {
     target?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -605,7 +593,9 @@ function renderLesson() {
 
   nodes.lessonTopic.textContent = material.topic;
   nodes.lessonTitle.textContent = material.title;
-  nodes.lessonDescription.textContent = material.description;
+  const description = (material.description || "").trim();
+  nodes.lessonDescription.textContent = description;
+  nodes.lessonDescription.classList.toggle("hidden", !description);
   const doneCount = completedSet(material.id).size;
   nodes.lessonMeta.innerHTML = `<span>Роль: ${material.role}</span><span>Время: ${material.duration}</span><span>Понятно: ${doneCount}/${material.steps.length}</span>`;
   const tags = [...new Set([...material.keywords, "Инструкция", "Контроль", "Ошибки", "Исходное видео"])];
@@ -964,3 +954,9 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+window.addEventListener("resize", () => {
+  if (state.activeSlideIndex > 0) {
+    alignCopyToSlide(state.activeSlideIndex);
+  }
+});

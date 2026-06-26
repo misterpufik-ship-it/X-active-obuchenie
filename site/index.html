@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Учебный центр X-active</title>
-    <link rel="stylesheet" href="./styles.css?v=20260629" />
+    <link rel="stylesheet" href="./styles.css?v=20260630" />
   </head>
   <body>
     <div class="app-shell">
@@ -77,20 +77,14 @@
         <section class="library-layout" id="library-layout">
           <article class="lesson-card" id="lesson-card" aria-live="polite">
             <header class="lesson-header">
-              <div>
-                <p class="eyebrow editable-field" id="lesson-topic" tabindex="0"></p>
-                <h2 class="editable-field" id="lesson-title" tabindex="0"></h2>
-                <p class="editable-field" id="lesson-description" tabindex="0"></p>
-              </div>
-              <div class="lesson-header-side">
-                <div class="lesson-header-toolbar">
-                  <div class="lesson-meta" id="lesson-meta"></div>
-                  <div class="lesson-actions" id="lesson-actions">
-                    <button class="secondary-btn hidden" id="edit-lesson" type="button">Редактировать</button>
-                    <button class="primary-btn hidden" id="save-lesson" type="button">Сохранить</button>
-                    <button class="ghost-btn hidden" id="open-builder" type="button">Конструктор</button>
-                  </div>
-                </div>
+              <p class="eyebrow editable-field" id="lesson-topic" tabindex="0"></p>
+              <h2 class="editable-field" id="lesson-title" tabindex="0"></h2>
+              <p class="lesson-description editable-field hidden" id="lesson-description" tabindex="0"></p>
+              <div class="lesson-meta" id="lesson-meta"></div>
+              <div class="lesson-actions" id="lesson-actions">
+                <button class="secondary-btn hidden" id="edit-lesson" type="button">Редактировать</button>
+                <button class="primary-btn hidden" id="save-lesson" type="button">Сохранить</button>
+                <button class="ghost-btn hidden" id="open-builder" type="button">Конструктор</button>
               </div>
             </header>
 
@@ -109,7 +103,8 @@
                 </button>
               </div>
               <div class="step-panel" id="step-panel">
-                <div class="step-copy" id="step-copy">
+                <div class="step-copy-column" id="step-copy-column">
+                  <div class="step-copy" id="step-copy">
                   <div class="instruction-grid">
                     <div>
                       <span class="mini-label">Зачем</span>
@@ -128,6 +123,7 @@
                     <input type="checkbox" id="step-complete" />
                     <span>Шаг понятен и выполнен</span>
                   </label>
+                </div>
                 </div>
                 <div class="step-slides" id="step-slides"></div>
               </div>
@@ -171,13 +167,8 @@
         <section class="develop-layout hidden" id="develop-layout" aria-label="Разработка урока">
           <div class="develop-card">
             <header class="develop-header">
-              <div>
-                <p class="eyebrow">Конструктор</p>
-                <h2>Разработка урока из видео</h2>
-                <p class="develop-lead">
-                  Загрузите видео с инструкцией — инструмент сам сделает транскрипцию, шаги, скриншоты и экспорт в HTML/PDF.
-                </p>
-              </div>
+              <p class="eyebrow">Конструктор</p>
+              <h2>Разработка урока из видео</h2>
               <a class="dev-link-btn dev-link-btn-light" id="develop-open-link" href="https://posoolonono.beget.app/x-active-builder/" target="_blank" rel="noreferrer">Открыть в новой вкладке</a>
             </header>
             <iframe
@@ -200,6 +191,6 @@
       <p id="lightbox-caption"></p>
     </div>
 
-    <script src="./app.js?v=20260629"></script>
+    <script src="./app.js?v=20260630"></script>
   </body>
 </html>
