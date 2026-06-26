@@ -918,11 +918,14 @@ button {
   border-radius: 8px;
   overflow: hidden;
   background: #fff;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .screenshot-zoom {
   display: block;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
   border: 0;
   padding: 0;
   background: transparent;
@@ -932,6 +935,8 @@ button {
 .screenshot-media {
   position: relative;
   display: block;
+  line-height: 0;
+  max-width: 100%;
 }
 
 .screenshot-overlay {
@@ -1034,7 +1039,8 @@ button {
 
 .screenshot-frame img {
   display: block;
-  width: 100%;
+  max-width: 100%;
+  width: auto;
   height: auto;
 }
 
@@ -1076,7 +1082,8 @@ button {
 }
 
 #guide-view.is-extended .screenshot-frame img {
-  width: 100%;
+  max-width: 100%;
+  width: auto;
   height: auto;
 }
 
