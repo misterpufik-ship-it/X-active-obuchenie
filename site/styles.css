@@ -70,20 +70,97 @@ button {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
+  overflow: hidden;
+  padding-right: 2px;
+}
+
+.rail-materials {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.material-list {
+  min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
-.rail-scroll::-webkit-scrollbar {
+.material-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.rail-scroll::-webkit-scrollbar-thumb {
+.material-list::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.22);
   border-radius: 999px;
+}
+
+.topics-dropdown {
+  flex: 0 0 auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 10px;
+}
+
+.topics-dropdown-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  list-style: none;
+  cursor: pointer;
+  color: #cfe0ef;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px 2px 8px;
+  user-select: none;
+}
+
+.topics-dropdown-summary::-webkit-details-marker {
+  display: none;
+}
+
+.topics-dropdown-summary::before {
+  content: "▸";
+  margin-right: 8px;
+  color: #9eb4c7;
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+
+.topics-dropdown[open] .topics-dropdown-summary::before {
+  transform: rotate(90deg);
+}
+
+.topics-dropdown-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topics-dropdown-summary strong,
+.topics-dropdown-summary #topics-count {
+  min-width: 28px;
+  min-height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12px;
+}
+
+.topics-dropdown .topic-list {
+  max-height: min(240px, 36vh);
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
 .rail-section {
@@ -219,13 +296,6 @@ button {
 .topic-button span {
   min-width: 0;
   line-height: 1.35;
-}
-
-.rail-materials {
-  min-height: 0;
-  display: grid;
-  gap: 8px;
-  flex: 1 1 auto;
 }
 
 .rail-title {

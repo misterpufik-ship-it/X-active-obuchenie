@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Учебный центр X-active</title>
-    <link rel="stylesheet" href="./styles.css?v=20260625f" />
+    <link rel="stylesheet" href="./styles.css?v=20260626a" />
   </head>
   <body>
     <div class="app-shell">
@@ -33,11 +33,6 @@
         </div>
 
         <div class="rail-scroll" id="rail-library">
-          <div class="rail-section">
-            <p class="section-label">Темы</p>
-            <nav class="topic-list" id="topic-list" aria-label="Оглавление по темам"></nav>
-          </div>
-
           <section class="rail-section rail-materials" aria-label="Список материалов">
             <div class="rail-title">
               <span>Материалы</span>
@@ -45,6 +40,14 @@
             </div>
             <div class="material-list" id="material-list"></div>
           </section>
+
+          <details class="topics-dropdown" id="topics-dropdown">
+            <summary class="topics-dropdown-summary">
+              <span class="topics-dropdown-label">Темы</span>
+              <strong id="topics-count">0</strong>
+            </summary>
+            <nav class="topic-list" id="topic-list" aria-label="Оглавление по темам"></nav>
+          </details>
         </div>
       </aside>
 
@@ -56,7 +59,7 @@
         <section class="topbar">
           <div>
             <p class="eyebrow">Учебный центр</p>
-            <h2>Материалы по темам</h2>
+            <h2>Материалы</h2>
           </div>
           <div class="summary-strip" aria-label="Сводка учебной базы">
             <div>
@@ -191,6 +194,6 @@
       <p id="lightbox-caption"></p>
     </div>
 
-    <script src="./app.js?v=20260625f"></script>
+    <script src="./app.js?v=20260626a"></script>
   </body>
 </html>

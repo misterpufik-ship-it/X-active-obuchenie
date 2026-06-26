@@ -56,6 +56,8 @@ const nodes = {
   sidebarToggle: document.querySelector("#sidebar-toggle"),
   sidebarRestore: document.querySelector("#sidebar-restore"),
   topicList: document.querySelector("#topic-list"),
+  topicsDropdown: document.querySelector("#topics-dropdown"),
+  topicsCount: document.querySelector("#topics-count"),
   materialList: document.querySelector("#material-list"),
   searchInput: document.querySelector("#search-input"),
   matchCount: document.querySelector("#match-count"),
@@ -554,10 +556,19 @@ function bindInteractiveLessonHandlers(screenshots, labels) {
 
 function renderTopics(items) {
   const topics = [...new Set(materials.map((material) => material.topic))];
+  if (nodes.topicsCount) {
+    nodes.topicsCount.textContent = String(topics.length);
+  }
+  const currentTopic = selectedMaterial()?.topic || "";
+  const label = nodes.topicsDropdown?.querySelector(".topics-dropdown-label");
+  if (label) {
+    label.textContent = currentTopic ? `Тема: ${currentTopic}` : "Темы";
+  }
+
   nodes.topicList.innerHTML = topics
     .map((topic) => {
       const count = items.filter((material) => material.topic === topic).length;
-      const active = selectedMaterial().topic === topic ? " is-active" : "";
+      const active = currentTopic === topic ? " is-active" : "";
       return `<button class="topic-button${active}" type="button" data-topic="${topic}">
         <span>${topic}</span><strong>${count}</strong>
       </button>`;
