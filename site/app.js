@@ -307,6 +307,53 @@ function renderInteractiveAction(text, labels) {
   return parts.join("");
 }
 
+function splitActionLines(source) {
+  const text = String(source || "");
+  if (!text.trim()) return [];
+
+  const normalized = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<p[^>]*>/gi, "")
+    .replace(/<\/div>\s*<div[^>]*>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<div[^>]*>/gi, "");
+
+  return normalized
+    .split(/\n/)
+    .map((line) => line.trim())
+    .filter((line) => plainTextFromHtml(line).length > 0);
+}
+
+function renderActionLineContent(line, labels) {
+  const labelSet = labels instanceof Set ? labels : new Set(labels);
+  const hasRefs = labelSet.size > 0 && /\{\d+\}/.test(line);
+  if (!hasRefs) return renderRichText(line);
+  if (line.includes("<")) return renderInteractiveActionHtml(line, labelSet);
+  return renderInteractiveAction(line, labelSet);
+}
+
+function renderActionLines(source, labels) {
+  const lines = splitActionLines(source);
+  if (!lines.length) return "";
+
+  const body = lines
+    .map((line) => `<div class="action-line">${renderActionLineContent(line, labels)}</div>`)
+    .join("");
+
+  return `<div class="action-lines">${body}</div>`;
+}
+
+function highlightActionLine(label) {
+  document.querySelectorAll(".action-line").forEach((line) => {
+    line.classList.remove("is-highlighted");
+  });
+  if (!label) return;
+  const button = document.querySelector(`.action-ref-btn[data-label="${CSS.escape(String(label))}"]`);
+  button?.closest(".action-line")?.classList.add("is-highlighted");
+}
+
 function markerStyle(item, width, height) {
   const w = Number(width) || 1;
   const h = Number(height) || 1;
@@ -517,6 +564,7 @@ function pulseScreenshotLabel(label, screenshots = []) {
     clearTimeout(pulseTimer);
     pulseTimer = null;
   }
+  highlightActionLine(label);
   document.querySelectorAll(".screenshot-marker, .action-ref-btn").forEach((node) => {
     node.classList.toggle("is-pulsing", node.dataset.label === String(label));
   });
@@ -667,10 +715,8 @@ function renderLesson() {
   const labels = labelsFromScreenshots(screenshots);
   if (state.editMode) {
     nodes.stepAction.innerHTML = renderRichText(step.action);
-  } else if (labels.size) {
-    nodes.stepAction.innerHTML = renderInteractiveAction(step.action, labels);
   } else {
-    nodes.stepAction.innerHTML = renderRichText(step.action);
+    nodes.stepAction.innerHTML = renderActionLines(step.action, labels);
   }
   nodes.stepResult.innerHTML = renderRichText(step.result);
   state.activeSlideIndex = 0;

@@ -989,13 +989,38 @@ button {
   background: var(--soft);
 }
 
-.instruction-main p {
+.instruction-main p,
+#step-action {
   margin: 6px 0 0;
   color: #344054;
   line-height: 1.55;
   overflow-wrap: anywhere;
   word-break: break-word;
-  white-space: pre-wrap;
+}
+
+.action-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.action-line {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.55);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.action-line.is-highlighted {
+  background: #235d6f;
+  color: #fff;
+}
+
+.action-line.is-highlighted .lesson-text-red,
+.action-line.is-highlighted strong,
+.action-line.is-highlighted b {
+  color: #fff;
 }
 
 .instruction-fold {
@@ -1183,6 +1208,12 @@ button {
 #step-action .action-ref-btn.is-pulsing {
   animation: marker-pulse 0.85s ease-in-out infinite;
   background: #e53935;
+  color: #fff;
+}
+
+.action-line.is-highlighted .action-ref-btn {
+  border-color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
 
