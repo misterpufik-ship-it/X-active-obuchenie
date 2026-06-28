@@ -336,7 +336,7 @@ function renderActionLineContent(line, labels) {
 
 function actionLineMarker(index) {
   const letter = String.fromCharCode(65 + (index % 26));
-  return `<span class="action-line-marker" aria-hidden="true">${letter}.</span>`;
+  return `<span class="action-line-marker" aria-hidden="true">${letter}</span>`;
 }
 
 function renderActionLines(source, labels) {

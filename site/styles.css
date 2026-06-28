@@ -1007,34 +1007,43 @@ button {
 
 .action-line {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  align-items: stretch;
+  border: 1px solid var(--cyan);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.55);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  overflow: hidden;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .action-line-marker {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  padding: 8px 10px;
+  border-right: 1px solid var(--cyan);
   color: var(--cyan);
   font-size: 22px;
   font-weight: 800;
   text-transform: uppercase;
-  line-height: 1.4;
+  line-height: 1;
 }
 
 .action-line-text {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.action-line.is-highlighted .action-line-marker {
-  color: #fff;
+  padding: 8px 10px;
 }
 
 .action-line.is-highlighted {
+  border-color: rgba(255, 255, 255, 0.55);
   background: #235d6f;
+  color: #fff;
+}
+
+.action-line.is-highlighted .action-line-marker {
+  border-right-color: rgba(255, 255, 255, 0.45);
   color: #fff;
 }
 
