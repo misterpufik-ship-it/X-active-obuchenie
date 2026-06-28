@@ -1018,10 +1018,10 @@ button {
 .action-line-marker {
   flex: 0 0 auto;
   color: var(--cyan);
-  font-size: 12px;
+  font-size: 22px;
   font-weight: 800;
   text-transform: uppercase;
-  line-height: 1.55;
+  line-height: 1.4;
 }
 
 .action-line-text {
