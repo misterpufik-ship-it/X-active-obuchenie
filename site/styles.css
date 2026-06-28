@@ -61,8 +61,10 @@ button {
   transition: transform 0.2s ease;
 }
 
-.rail-top {
+.rail-bottom {
   flex: 0 0 auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 10px;
 }
 
 .rail-scroll {
@@ -702,7 +704,8 @@ button {
   cursor: text;
 }
 
-.instruction-grid p,
+.instruction-main p,
+.instruction-fold p,
 #lesson-title,
 #lesson-description,
 #step-title,
@@ -979,20 +982,60 @@ button {
   box-shadow: 0 0 0 1px rgba(33, 162, 179, 0.2);
 }
 
-.instruction-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.instruction-grid div {
+.instruction-main {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--soft);
 }
 
-.instruction-grid p {
+.instruction-main p {
   margin: 6px 0 0;
+  color: #344054;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.instruction-fold {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.instruction-fold summary {
+  padding: 12px 14px;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.instruction-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.instruction-fold summary::before {
+  content: "▸";
+  margin-right: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+
+.instruction-fold[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.instruction-fold p {
+  margin: 0;
+  padding: 0 14px 14px;
   color: #344054;
   line-height: 1.55;
   overflow-wrap: anywhere;
@@ -1207,12 +1250,16 @@ button {
   height: auto;
 }
 
-#guide-view.is-extended .instruction-grid {
-  gap: 10px;
+#guide-view.is-extended .instruction-main {
+  padding: 12px;
 }
 
-#guide-view.is-extended .instruction-grid div {
-  padding: 12px;
+#guide-view.is-extended .instruction-fold summary {
+  padding: 10px 12px;
+}
+
+#guide-view.is-extended .instruction-fold p {
+  padding: 0 12px 12px;
 }
 
 .checklist {

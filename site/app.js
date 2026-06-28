@@ -105,7 +105,7 @@ const nodes = {
   developLayout: document.querySelector("#develop-layout"),
   modeButtons: document.querySelectorAll(".mode-btn"),
   railLibrary: document.querySelector("#rail-library"),
-  railTop: document.querySelector(".rail-top"),
+  railBottom: document.querySelector(".rail-bottom"),
   editLesson: document.querySelector("#edit-lesson"),
   saveLesson: document.querySelector("#save-lesson"),
   openBuilder: document.querySelector("#open-builder")
@@ -762,7 +762,7 @@ function setMode(mode) {
     button.classList.toggle("is-active", button.dataset.mode === mode);
   });
   nodes.railLibrary?.classList.toggle("hidden", !isLibrary);
-  nodes.railTop?.classList.toggle("hidden", !isLibrary);
+  nodes.railBottom?.classList.toggle("hidden", !isLibrary);
   if (!isLibrary) {
     nodes.sourceVideo.pause();
     const material = selectedMaterial();

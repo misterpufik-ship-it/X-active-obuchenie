@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Учебный центр X-active</title>
-    <link rel="stylesheet" href="./styles.css?v=20260626a" />
+    <link rel="stylesheet" href="./styles.css?v=20260628a" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,13 +25,6 @@
           <button class="mode-btn" type="button" data-mode="develop">Создать урок</button>
         </nav>
 
-        <div class="rail-top">
-          <div class="search-box" role="search">
-            <label for="search-input">Поиск</label>
-            <input id="search-input" type="search" placeholder="Токен, карточки, поставка…" autocomplete="off" />
-          </div>
-        </div>
-
         <div class="rail-scroll" id="rail-library">
           <section class="rail-section rail-materials" aria-label="Список материалов">
             <div class="rail-title">
@@ -48,6 +41,13 @@
             </summary>
             <nav class="topic-list" id="topic-list" aria-label="Оглавление по темам"></nav>
           </details>
+        </div>
+
+        <div class="rail-bottom">
+          <div class="search-box" role="search">
+            <label for="search-input">Поиск</label>
+            <input id="search-input" type="search" placeholder="Токен, карточки, поставка…" autocomplete="off" />
+          </div>
         </div>
       </aside>
 
@@ -108,20 +108,18 @@
               <div class="step-panel" id="step-panel">
                 <div class="step-copy-column" id="step-copy-column">
                   <div class="step-copy" id="step-copy">
-                  <div class="instruction-grid">
-                    <div>
-                      <span class="mini-label">Зачем</span>
-                      <p class="editable-field" id="step-why" tabindex="0"></p>
-                    </div>
-                    <div>
-                      <span class="mini-label">Действие</span>
-                      <p class="editable-field" id="step-action" tabindex="0"></p>
-                    </div>
-                    <div>
-                      <span class="mini-label">Готово, если</span>
-                      <p class="editable-field" id="step-result" tabindex="0"></p>
-                    </div>
+                  <div class="instruction-main">
+                    <span class="mini-label">Действие</span>
+                    <p class="editable-field" id="step-action" tabindex="0"></p>
                   </div>
+                  <details class="instruction-fold">
+                    <summary>Зачем</summary>
+                    <p class="editable-field" id="step-why" tabindex="0"></p>
+                  </details>
+                  <details class="instruction-fold">
+                    <summary>Готово, если</summary>
+                    <p class="editable-field" id="step-result" tabindex="0"></p>
+                  </details>
                   <label class="complete-toggle">
                     <input type="checkbox" id="step-complete" />
                     <span>Шаг понятен и выполнен</span>
@@ -194,6 +192,6 @@
       <p id="lightbox-caption"></p>
     </div>
 
-    <script src="./app.js?v=20260626a"></script>
+    <script src="./app.js?v=20260628a"></script>
   </body>
 </html>
