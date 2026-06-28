@@ -1006,10 +1006,31 @@ button {
 }
 
 .action-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   padding: 8px 10px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.55);
   transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.action-line-marker {
+  flex: 0 0 auto;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 1.55;
+}
+
+.action-line-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.action-line.is-highlighted .action-line-marker {
+  color: #fff;
 }
 
 .action-line.is-highlighted {

@@ -334,12 +334,20 @@ function renderActionLineContent(line, labels) {
   return renderInteractiveAction(line, labelSet);
 }
 
+function actionLineMarker(index) {
+  const letter = String.fromCharCode(65 + (index % 26));
+  return `<span class="action-line-marker" aria-hidden="true">${letter}.</span>`;
+}
+
 function renderActionLines(source, labels) {
   const lines = splitActionLines(source);
   if (!lines.length) return "";
 
   const body = lines
-    .map((line) => `<div class="action-line">${renderActionLineContent(line, labels)}</div>`)
+    .map(
+      (line, index) =>
+        `<div class="action-line">${actionLineMarker(index)}<span class="action-line-text">${renderActionLineContent(line, labels)}</span></div>`
+    )
     .join("");
 
   return `<div class="action-lines">${body}</div>`;
